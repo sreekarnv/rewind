@@ -16,11 +16,13 @@ namespace rwd {
     {
     }
 
-    Capturer::~Capturer() {
+    Capturer::~Capturer() 
+    {
         close();
     }
 
-    std::vector<std::string> Capturer::getAvailableInterfaces() {
+    std::vector<std::string> Capturer::getAvailableInterfaces() 
+    {
         std::vector<std::string> interfaces;
 
         auto& deviceList = pcpp::PcapLiveDeviceList::getInstance();
@@ -39,7 +41,8 @@ namespace rwd {
         return interfaces;
     }
 
-    bool Capturer::open(size_t interfaceIndex) {
+    bool Capturer::open(size_t interfaceIndex) 
+    {
         auto& deviceList = pcpp::PcapLiveDeviceList::getInstance();
         auto devices = deviceList.getPcapLiveDevicesList();
 
@@ -59,7 +62,8 @@ namespace rwd {
         return true;
     }
 
-    bool Capturer::startCapture(HttpMessageCallback callback) {
+    bool Capturer::startCapture(HttpMessageCallback callback) 
+    {
         if (!device_) {
             spdlog::error("Device not opened!");
             return false;
@@ -81,14 +85,16 @@ namespace rwd {
         return true;
     }
 
-    void Capturer::stopCapture() {
+    void Capturer::stopCapture() 
+    {
         if (device_) {
             device_->stopCapture();
             spdlog::info("Capture stopped");
         }
     }
 
-    void Capturer::close() {
+    void Capturer::close() 
+    {
         stopCapture();
 
         if (device_) {
@@ -124,7 +130,8 @@ namespace rwd {
         capturer->onTcpMessageReady(side, tcpData);
     }
 
-    void Capturer::onTcpMessageReady(int8_t side, const pcpp::TcpStreamData& tcpData) {
+    void Capturer::onTcpMessageReady(int8_t side, const pcpp::TcpStreamData& tcpData) 
+    {
         std::string data(
             reinterpret_cast<const char*>(tcpData.getData()),
             tcpData.getDataLength()

@@ -39,6 +39,15 @@ set(PCAPPP_BUILD_TESTS OFF CACHE BOOL "Don't build tests")
 
 FetchContent_MakeAvailable(PcapPlusPlus)
 
+message(STATUS "Fetching nlohmann/json...")
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+    GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(json)
+
 add_executable(capture-agent
  "src/main.cpp" "src/Capturer.cpp" "src/HttpMessage.cpp")
 
@@ -48,6 +57,7 @@ target_link_libraries(capture-agent
         Pcap++
         Packet++
         Common++
+        nlohmann_json::nlohmann_json 
 )
 
 target_include_directories(capture-agent

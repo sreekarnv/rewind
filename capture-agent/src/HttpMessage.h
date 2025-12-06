@@ -3,6 +3,7 @@
 #include <string>
 #include <map>
 #include <cstdint>
+#include <nlohmann/json.hpp>
 
 namespace rwd {
 
@@ -41,6 +42,7 @@ namespace rwd {
 
         std::string getFirstLine() const;
         bool isValid() const { return type_ != Type::Unknown; }
+        nlohmann::json toJson() const;
 
     private:
         Type type_;
