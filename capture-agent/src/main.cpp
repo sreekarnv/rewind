@@ -1,9 +1,12 @@
 #include "Capturer.h"
 #include "HttpMessage.h"
+#include "SessionManager.h"
 #include <iostream>
 #include <thread>
+#include <iomanip>
+#include <chrono>
 #include <fstream>
-#include <vector>
+#include <filesystem>
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
@@ -11,8 +14,9 @@ int main() {
     spdlog::set_level(spdlog::level::debug);
 
     spdlog::info("Rewind Capture Agent Starting...");
+    spdlog::info("Phase 3: Session Tracking Enabled");
 
-    std::vector<rwd::HttpMessage> capturedMessages;
+    rwd::SessionManager sessionManager;
 
     rwd::Capturer capturer;
 
@@ -32,37 +36,50 @@ int main() {
         return 1;
     }
 
-    auto onHttpMessage = [&capturedMessages](const rwd::HttpMessage& msg) {
-        capturedMessages.push_back(msg);
+    auto onHttpMessage = [&sessionManager](
+        const rwd::HttpMessage& msg,
+        const std::string& clientIp,
+        int clientPort,
+        const std::string& serverIp,
+        int serverPort,
+        bool isRequest)
+        {
+            sessionManager.addMessage(msg, clientIp, clientPort, serverIp, serverPort, isRequest);
 
-        spdlog::info("=== HTTP {} ===",
-            msg.getType() == rwd::HttpMessage::Type::Request ? "Request" : "Response"
-        );
-        spdlog::info("First line: {}", msg.getFirstLine());
+            spdlog::info("=== HTTP {} ===",
+                isRequest ? "Request" : "Response"
+            );
+            spdlog::info("Connection: {}:{} -> {}:{}",
+                clientIp, clientPort, serverIp, serverPort);
+            spdlog::info("First line: {}", msg.getFirstLine());
 
-        std::string host = msg.getHeader("Host");
-        if (!host.empty()) {
-            spdlog::info("Host: {}", host);
-        }
+            if (isRequest) {
+                std::string host = msg.getHeader("Host");
+                if (!host.empty()) {
+                    spdlog::info("Host: {}", host);
+                }
+            }
+            else {
+                std::string contentType = msg.getHeader("Content-Type");
+                if (!contentType.empty()) {
+                    spdlog::info("Content-Type: {}", contentType);
+                }
+            }
 
-        std::string contentType = msg.getHeader("Content-Type");
-        if (!contentType.empty()) {
-            spdlog::info("Content-Type: {}", contentType);
-        }
-
-        std::cout << std::endl;
+            std::cout << std::endl;
         };
 
     spdlog::info("Starting capture...");
-    spdlog::info("Visit http://localhost:3000 in your browser");
 
-    if (!capturer.startCapture(onHttpMessage)) {
+    if (!capturer.startCapture(onHttpMessage)) 
+    {
         spdlog::error("Failed to start capture!");
         return 1;
     }
 
     auto startTime = std::chrono::steady_clock::now();
-    while (capturer.getHttpMessageCount() < 10) {
+    while (capturer.getHttpMessageCount() < 10) 
+    {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         auto elapsed = std::chrono::steady_clock::now() - startTime;
@@ -77,80 +94,65 @@ int main() {
     spdlog::info("Total packets: {}", capturer.getPacketCount());
     spdlog::info("HTTP messages: {}", capturer.getHttpMessageCount());
 
-    spdlog::info("Converting {} messages to JSON...", capturedMessages.size());
+    sessionManager.closeAllSessions();
+    spdlog::info("Sessions tracked: {}", sessionManager.getSessionCount());
 
-    nlohmann::json jsonArray = nlohmann::json::array();
-    int successCount = 0;
-    int errorCount = 0;
+    spdlog::info("Converting {} sessions to JSON...", sessionManager.getSessionCount());
 
-    for (size_t i = 0; i < capturedMessages.size(); i++) {
-        const auto& msg = capturedMessages[i];
+    nlohmann::json output;
 
-        spdlog::debug("Processing message {} of {}", i + 1, capturedMessages.size());
+    try 
+    {
+        output = sessionManager.toJson();
+        spdlog::info("Conversion complete!");
+    }
+    catch (const std::exception& e) 
+    {
+        spdlog::error("Failed to convert sessions to JSON: {}", e.what());
+        return 1;
+    }
+    std::string filename = "captured_sessions.json";
 
-        try {
-            nlohmann::json msgJson = msg.toJson();
-            jsonArray.push_back(msgJson);
-            successCount++;
-            spdlog::debug("  ✓ Message {} converted successfully", i + 1);
+    try {
+        std::ofstream outFile(filename);
+        if (outFile.is_open()) 
+        {
+            outFile << output.dump(2);
+            outFile.close();
 
+            std::filesystem::path fullPath = std::filesystem::absolute(filename);
+            spdlog::info("Saved{} sessions to : ", sessionManager.getSessionCount());
+            spdlog::info("  {}", fullPath.string());
         }
-        catch (const nlohmann::json::type_error& e) {
-            errorCount++;
-            spdlog::error("  ✗ JSON type error for message {}: {}", i + 1, e.what());
-            spdlog::error("     Message type: {}",
-                msg.getType() == rwd::HttpMessage::Type::Request ? "Request" : "Response");
-            spdlog::error("     First line: {}", msg.getFirstLine());
-
-            try {
-                nlohmann::json fallback;
-                fallback["error"] = "Serialization failed";
-                fallback["errorDetails"] = std::string(e.what());
-                fallback["messageIndex"] = i;
-                fallback["firstLine"] = msg.getFirstLine();
-                jsonArray.push_back(fallback);
-            }
-            catch (...) {
-                spdlog::error("     Even fallback failed!");
-            }
-
-        }
-        catch (const std::exception& e) {
-            errorCount++;
-            spdlog::error("  ✗ General exception for message {}: {}", i + 1, e.what());
-
-        }
-        catch (...) {
-            errorCount++;
-            spdlog::error("  ✗ Unknown exception for message {}", i + 1);
+        else 
+        {
+            spdlog::error("Failed to open {}", filename);
         }
     }
-
-    spdlog::info("Conversion complete: {} success, {} errors", successCount, errorCount);
-
-    if (!jsonArray.empty()) {
-        std::string filename = "captured.json";
-
-        try {
-            std::ofstream outFile(filename);
-            if (outFile.is_open()) {
-                outFile << jsonArray.dump(2);
-                outFile.close();
-                spdlog::info("✓ Saved {} messages to {}", jsonArray.size(), filename);
-            }
-            else {
-                spdlog::error("✗ Failed to open {} for writing!", filename);
-            }
-        }
-        catch (const std::exception& e) {
-            spdlog::error("✗ Failed to write JSON file: {}", e.what());
-        }
-    }
-    else {
-        spdlog::warn("No messages to save");
+    catch (const std::exception& e)
+    {
+        spdlog::error("Failed to write JSON file : {}", e.what());
     }
 
-    std::cout << "\nPress Enter to exit..." << std::endl;
+    std::cout << "\n=== CAPTURE SUMMARY ===" << std::endl;
+    std::cout << "Sessions: " << sessionManager.getSessionCount() << std::endl;
+    std::cout << "Packets:  " << capturer.getPacketCount() << std::endl;
+    std::cout << "Messages: " << capturer.getHttpMessageCount() << std::endl;
+
+    if (sessionManager.getSessionCount() > 0) 
+    {
+        auto sessions = sessionManager.getAllSessions();
+        auto firstSession = sessions[0];
+
+        std::cout << "\n--- Example Session ---" << std::endl;
+        std::cout << "ID: " << firstSession->getSessionId() << std::endl;
+        std::cout << "Transactions: " << firstSession->getTransactionCount() << std::endl;
+        std::cout << "Duration: " << std::fixed << std::setprecision(3)
+            << firstSession->getDuration() << "s" << std::endl;
+        std::cout << "----------------------\n" << std::endl;
+    }
+
+    std::cout << "Press Enter to exit..." << std::endl;
     std::cin.ignore();
     std::cin.get();
 

@@ -49,7 +49,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 add_executable(capture-agent
- "src/main.cpp" "src/Capturer.cpp" "src/HttpMessage.cpp")
+ "src/main.cpp" "src/Capturer.cpp" "src/HttpMessage.cpp" "src/Session.cpp" "src/SessionManager.cpp")
 
 target_link_libraries(capture-agent
     PRIVATE

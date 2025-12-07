@@ -130,8 +130,7 @@ namespace rwd {
         capturer->onTcpMessageReady(side, tcpData);
     }
 
-    void Capturer::onTcpMessageReady(int8_t side, const pcpp::TcpStreamData& tcpData) 
-    {
+    void Capturer::onTcpMessageReady(int8_t side, const pcpp::TcpStreamData& tcpData) {
         std::string data(
             reinterpret_cast<const char*>(tcpData.getData()),
             tcpData.getDataLength()
@@ -143,8 +142,16 @@ namespace rwd {
         if (msg.isValid()) {
             httpMessageCount_++;
 
+            // TODO: Extract connection info from tcpData
+            // For now, use placeholder values
+            std::string clientIp = "127.0.0.1";
+            int clientPort = 52341;
+            std::string serverIp = "127.0.0.1";
+            int serverPort = 3000;
+            bool isRequest = (msg.getType() == HttpMessage::Type::Request);
+
             if (httpCallback_) {
-                httpCallback_(msg);
+                httpCallback_(msg, clientIp, clientPort, serverIp, serverPort, isRequest);
             }
         }
     }

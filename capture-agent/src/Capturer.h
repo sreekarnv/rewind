@@ -14,7 +14,14 @@ namespace pcpp {
 
 namespace rwd {
 
-    using HttpMessageCallback = std::function<void(const HttpMessage&)>;
+    using HttpMessageCallback = std::function<void(
+        const HttpMessage&,
+        const std::string& clientIp,
+        int clientPort,
+        const std::string& serverIp,
+        int serverPort,
+        bool isRequest
+    )>;
 
     class Capturer {
     public:
