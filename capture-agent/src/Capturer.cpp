@@ -4,6 +4,7 @@
 #include "TcpReassembly.h"
 #include "Packet.h"
 #include "TcpLayer.h"
+#include "IPv4Layer.h"
 #include <spdlog/spdlog.h>
 
 namespace rwd {
@@ -16,12 +17,12 @@ namespace rwd {
     {
     }
 
-    Capturer::~Capturer() 
+    Capturer::~Capturer()
     {
         close();
     }
 
-    std::vector<std::string> Capturer::getAvailableInterfaces() 
+    std::vector<std::string> Capturer::getAvailableInterfaces()
     {
         std::vector<std::string> interfaces;
 
@@ -41,7 +42,7 @@ namespace rwd {
         return interfaces;
     }
 
-    bool Capturer::open(size_t interfaceIndex) 
+    bool Capturer::open(size_t interfaceIndex)
     {
         auto& deviceList = pcpp::PcapLiveDeviceList::getInstance();
         auto devices = deviceList.getPcapLiveDevicesList();
@@ -62,30 +63,7 @@ namespace rwd {
         return true;
     }
 
-    bool Capturer::startCapture(HttpMessageCallback callback) 
-    {
-        if (!device_) {
-            spdlog::error("Device not opened!");
-            return false;
-        }
-
-        httpCallback_ = callback;
-
-        tcpReassembly_ = std::make_unique<pcpp::TcpReassembly>(
-            onTcpMessageReadyStatic,
-            this  
-        );
-
-        if (!device_->startCapture(onPacketArrivesStatic, this)) {
-            spdlog::error("Failed to start capture!");
-            return false;
-        }
-
-        spdlog::info("Capture started");
-        return true;
-    }
-
-    void Capturer::stopCapture() 
+    void Capturer::stopCapture()
     {
         if (device_) {
             device_->stopCapture();
@@ -93,7 +71,7 @@ namespace rwd {
         }
     }
 
-    void Capturer::close() 
+    void Capturer::close()
     {
         stopCapture();
 
@@ -103,6 +81,7 @@ namespace rwd {
         }
 
         tcpReassembly_.reset();
+        connectionMap_.clear();
     }
 
     void Capturer::onPacketArrivesStatic(
@@ -130,6 +109,7 @@ namespace rwd {
         capturer->onTcpMessageReady(side, tcpData);
     }
 
+
     void Capturer::onTcpMessageReady(int8_t side, const pcpp::TcpStreamData& tcpData) {
         std::string data(
             reinterpret_cast<const char*>(tcpData.getData()),
@@ -142,18 +122,102 @@ namespace rwd {
         if (msg.isValid()) {
             httpMessageCount_++;
 
-            // TODO: Extract connection info from tcpData
-            // For now, use placeholder values
-            std::string clientIp = "127.0.0.1";
-            int clientPort = 52341;
-            std::string serverIp = "127.0.0.1";
-            int serverPort = 3000;
+            const pcpp::ConnectionData& connData = tcpData.getConnectionData();
+            uint32_t flowKey = connData.flowKey;
+
+            std::string clientIp = "unknown";
+            int clientPort = 0;
+            std::string serverIp = "unknown";
+            int serverPort = 0;
+
+            auto it = connectionMap_.find(flowKey);
+            if (it != connectionMap_.end()) {
+                const ConnectionInfo& info = it->second;
+                clientIp = info.clientIp;
+                clientPort = info.clientPort;
+                serverIp = info.serverIp;
+                serverPort = info.serverPort;
+            }
+            else {
+                if (isClientToServer) {
+                    clientIp = connData.srcIP.toString();
+                    clientPort = connData.srcPort;
+                    serverIp = connData.dstIP.toString();
+                    serverPort = connData.dstPort;
+                }
+                else {
+                    clientIp = connData.dstIP.toString();
+                    clientPort = connData.dstPort;
+                    serverIp = connData.srcIP.toString();
+                    serverPort = connData.srcPort;
+                }
+            }
+
             bool isRequest = (msg.getType() == HttpMessage::Type::Request);
 
             if (httpCallback_) {
                 httpCallback_(msg, clientIp, clientPort, serverIp, serverPort, isRequest);
             }
         }
+    }
+
+
+    void Capturer::onTcpConnectionStartStatic(
+        const pcpp::ConnectionData& connectionData,
+        void* userCookie)
+    {
+        auto* capturer = static_cast<Capturer*>(userCookie);
+
+        ConnectionInfo info;
+
+        info.clientIp = connectionData.srcIP.toString();
+        info.clientPort = connectionData.srcPort;
+        info.serverIp = connectionData.dstIP.toString();
+        info.serverPort = connectionData.dstPort;
+
+        uint32_t flowKey = connectionData.flowKey;
+        capturer->connectionMap_[flowKey] = info;
+
+        spdlog::debug("TCP connection started: {}:{} -> {}:{}",
+            info.clientIp, info.clientPort,
+            info.serverIp, info.serverPort);
+    }
+
+    void Capturer::onTcpConnectionEndStatic(
+        const pcpp::ConnectionData& connectionData,
+        pcpp::TcpReassembly::ConnectionEndReason reason,
+        void* userCookie)
+    {
+        auto* capturer = static_cast<Capturer*>(userCookie);
+
+        uint32_t flowKey = connectionData.flowKey;
+        capturer->connectionMap_.erase(flowKey);
+
+        spdlog::debug("TCP connection ended: flowKey={}", flowKey);
+    }
+
+    bool Capturer::startCapture(HttpMessageCallback callback) {
+        if (!device_) {
+            spdlog::error("Device not opened!");
+            return false;
+        }
+
+        httpCallback_ = callback;
+
+        tcpReassembly_ = std::make_unique<pcpp::TcpReassembly>(
+            onTcpMessageReadyStatic,
+            this,
+            onTcpConnectionStartStatic,
+            onTcpConnectionEndStatic
+        );
+
+        if (!device_->startCapture(onPacketArrivesStatic, this)) {
+            spdlog::error("Failed to start capture!");
+            return false;
+        }
+
+        spdlog::info("Capture started");
+        return true;
     }
 
 }

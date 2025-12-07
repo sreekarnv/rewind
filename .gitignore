@@ -1,3 +1,1 @@
-*.md
-!README.md
-*.json
+out/
