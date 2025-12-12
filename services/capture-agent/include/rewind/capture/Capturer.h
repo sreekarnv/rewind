@@ -1,6 +1,6 @@
 #pragma once
 
-#include "HttpMessage.h"
+#include "rewind/parsers/HttpMessage.h"
 #include <functional>
 #include <TcpReassembly.h>
 #include <string>

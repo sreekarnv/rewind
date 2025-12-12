@@ -1,0 +1,65 @@
+# Rewind Capture Agent Configuration
+
+capture:
+  # Network interface index (leave commented to prompt at runtime)
+  # interface_index: 0
+
+  # Maximum number of packets to capture (0 = unlimited)
+  packet_limit: 100
+
+  # Capture timeout in seconds
+  timeout_seconds: 60
+
+  # Output file name for captured sessions
+  output_file: "captured_sessions.json"
+
+  # Output directory for session files
+  output_directory: "./output"
+
+filters:
+  # Ports to capture (leave empty for all ports)
+  ports: [80, 8080, 3000, 8000]
+
+  # Whether to capture HTTP body
+  capture_body: true
+
+  # Maximum body size in bytes (1MB)
+  max_body_size: 1048576
+
+  # Custom BPF filter (overrides ports if specified)
+  # Example: "tcp and host 192.168.1.1"
+  # bpf_filter: ""
+
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+
+  # Log file (leave empty for stdout only)
+  # file: "capture.log"
+
+metrics:
+  # Enable Prometheus metrics exporter
+  enabled: true
+
+  # Metrics server port
+  port: 9090
+
+  # Metrics endpoint path
+  endpoint: "/metrics"
+
+sanitization:
+  # Enable PII sanitization
+  enabled: false
+
+  # Sanitize sensitive headers
+  sanitize_headers: true
+
+  # Sanitize sensitive data in body
+  sanitize_body: true
+
+  # Headers to sanitize
+  headers_to_sanitize:
+    - "Authorization"
+    - "Cookie"
+    - "Set-Cookie"
+    - "X-API-Key"

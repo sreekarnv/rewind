@@ -1,4 +1,4 @@
-#include "Session.h"
+#include "rewind/capture/Session.h"
 #include <spdlog/spdlog.h>
 
 namespace rwd {

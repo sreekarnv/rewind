@@ -1,6 +1,7 @@
-#include "Capturer.h"
-#include "HttpMessage.h"
-#include "SessionManager.h"
+#include "rewind/capture/Capturer.h"
+#include "rewind/parsers/HttpMessage.h"
+#include "rewind/capture/SessionManager.h"
+#include "rewind/config/Config.h"
 #include <iostream>
 #include <thread>
 #include <iomanip>
@@ -10,16 +11,56 @@
 #include <spdlog/spdlog.h>
 #include <nlohmann/json.hpp>
 
-int main() {
-    spdlog::set_level(spdlog::level::debug);
+void printUsage(const char* programName) {
+    std::cout << "Usage: " << programName << " [options]\n"
+              << "Options:\n"
+              << "  --config <file>    Path to configuration file (default: config/config.yaml)\n"
+              << "  --help             Show this help message\n";
+}
+
+spdlog::level::level_enum parseLogLevel(const std::string& level) {
+    if (level == "debug") return spdlog::level::debug;
+    if (level == "info") return spdlog::level::info;
+    if (level == "warn") return spdlog::level::warn;
+    if (level == "error") return spdlog::level::err;
+    return spdlog::level::info;
+}
+
+int main(int argc, char* argv[]) {
+    // Parse command line arguments
+    std::string configFile = "config/config.yaml";
+
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--help" || arg == "-h") {
+            printUsage(argv[0]);
+            return 0;
+        } else if (arg == "--config" && i + 1 < argc) {
+            configFile = argv[++i];
+        } else {
+            std::cerr << "Unknown argument: " << arg << std::endl;
+            printUsage(argv[0]);
+            return 1;
+        }
+    }
+
+    // Load configuration
+    rwd::Config config;
+    if (!config.loadFromFile(configFile)) {
+        spdlog::warn("Failed to load config file: {}", configFile);
+        spdlog::info("Using default configuration");
+    }
+
+    // Set up logging
+    spdlog::set_level(parseLogLevel(config.getLogging().level));
 
     spdlog::info("Rewind Capture Agent Starting...");
-    spdlog::info("Phase 3: Session Tracking Enabled");
+    spdlog::info("Version 1.0.0");
 
     rwd::SessionManager sessionManager;
-
     rwd::Capturer capturer;
 
+    // Select network interface
     auto interfaces = rwd::Capturer::getAvailableInterfaces();
     spdlog::info("Found {} network interfaces", interfaces.size());
 
@@ -27,15 +68,23 @@ int main() {
         spdlog::info("[{}] {}", i, interfaces[i]);
     }
 
-    std::cout << "\nWhich interface? (enter number): ";
     size_t choice;
-    std::cin >> choice;
+    auto configInterface = config.getInterfaceIndex();
+
+    if (configInterface.has_value()) {
+        choice = configInterface.value();
+        spdlog::info("Using interface {} from config", choice);
+    } else {
+        std::cout << "\nWhich interface? (enter number): ";
+        std::cin >> choice;
+    }
 
     if (!capturer.open(choice)) {
         spdlog::error("Failed to open interface!");
         return 1;
     }
 
+    // Callback for HTTP messages
     auto onHttpMessage = [&sessionManager](
         const rwd::HttpMessage& msg,
         const std::string& clientIp,
@@ -65,26 +114,36 @@ int main() {
                     spdlog::info("Content-Type: {}", contentType);
                 }
             }
-
-            std::cout << std::endl;
         };
 
     spdlog::info("Starting capture...");
+    spdlog::info("Packet limit: {}", config.getPacketLimit());
+    spdlog::info("Timeout: {} seconds", config.getTimeoutSeconds());
 
-    if (!capturer.startCapture(onHttpMessage)) 
+    if (!capturer.startCapture(onHttpMessage))
     {
         spdlog::error("Failed to start capture!");
         return 1;
     }
 
+    // Capture loop with configurable limits
     auto startTime = std::chrono::steady_clock::now();
-    while (capturer.getHttpMessageCount() < 10) 
-    {
+    int packetLimit = config.getPacketLimit();
+    int timeoutSeconds = config.getTimeoutSeconds();
+
+    while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
+        // Check packet limit (0 = unlimited)
+        if (packetLimit > 0 && capturer.getHttpMessageCount() >= packetLimit) {
+            spdlog::info("Packet limit reached");
+            break;
+        }
+
+        // Check timeout
         auto elapsed = std::chrono::steady_clock::now() - startTime;
-        if (std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() > 30) {
-            spdlog::info("30 seconds elapsed, stopping...");
+        if (std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() >= timeoutSeconds) {
+            spdlog::info("Timeout reached");
             break;
         }
     }
@@ -97,49 +156,57 @@ int main() {
     sessionManager.closeAllSessions();
     spdlog::info("Sessions tracked: {}", sessionManager.getSessionCount());
 
+    // Convert to JSON
     spdlog::info("Converting {} sessions to JSON...", sessionManager.getSessionCount());
 
     nlohmann::json output;
 
-    try 
+    try
     {
         output = sessionManager.toJson();
         spdlog::info("Conversion complete!");
     }
-    catch (const std::exception& e) 
+    catch (const std::exception& e)
     {
         spdlog::error("Failed to convert sessions to JSON: {}", e.what());
         return 1;
     }
-    std::string filename = "captured_sessions.json";
+
+    // Save to file
+    std::filesystem::path outputDir = config.getOutputDirectory();
+    std::filesystem::path outputFile = outputDir / config.getOutputFile();
 
     try {
-        std::ofstream outFile(filename);
-        if (outFile.is_open()) 
+        // Create output directory if it doesn't exist
+        std::filesystem::create_directories(outputDir);
+
+        std::ofstream outFile(outputFile);
+        if (outFile.is_open())
         {
             outFile << output.dump(2);
             outFile.close();
 
-            std::filesystem::path fullPath = std::filesystem::absolute(filename);
-            spdlog::info("Saved{} sessions to : ", sessionManager.getSessionCount());
+            std::filesystem::path fullPath = std::filesystem::absolute(outputFile);
+            spdlog::info("Saved {} sessions to:", sessionManager.getSessionCount());
             spdlog::info("  {}", fullPath.string());
         }
-        else 
+        else
         {
-            spdlog::error("Failed to open {}", filename);
+            spdlog::error("Failed to open {}", outputFile.string());
         }
     }
     catch (const std::exception& e)
     {
-        spdlog::error("Failed to write JSON file : {}", e.what());
+        spdlog::error("Failed to write JSON file: {}", e.what());
     }
 
+    // Print summary
     std::cout << "\n=== CAPTURE SUMMARY ===" << std::endl;
     std::cout << "Sessions: " << sessionManager.getSessionCount() << std::endl;
     std::cout << "Packets:  " << capturer.getPacketCount() << std::endl;
     std::cout << "Messages: " << capturer.getHttpMessageCount() << std::endl;
 
-    if (sessionManager.getSessionCount() > 0) 
+    if (sessionManager.getSessionCount() > 0)
     {
         auto sessions = sessionManager.getAllSessions();
         auto firstSession = sessions[0];

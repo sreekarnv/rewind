@@ -1,4 +1,4 @@
-#include "SessionManager.h"
+#include "rewind/capture/SessionManager.h"
 #include <spdlog/spdlog.h>
 #include <chrono>
 #include <sstream>

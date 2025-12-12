@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Session.h"
-#include "HttpMessage.h"
+#include "rewind/capture/Session.h"
+#include "rewind/parsers/HttpMessage.h"
 #include <map>
 #include <memory>
 #include <string>
