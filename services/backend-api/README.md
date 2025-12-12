@@ -227,3 +227,15 @@ curl http://localhost:8000/api/v1/stats
 - Data is loaded from JSON files on each request
 - CORS is enabled for all origins (suitable for development)
 - For production, configure CORS to specific origins
+
+## Future Enhancements
+
+- [ ] Pagination for large result sets
+- [ ] Filtering and search capabilities
+- [ ] Caching layer (Redis)
+- [ ] WebSocket support for real-time updates
+- [ ] Authentication/Authorization
+
+## License
+
+MIT
