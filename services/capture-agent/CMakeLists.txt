@@ -4,12 +4,11 @@ project(rewind-capture-agent VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
 if(WIN32)
     set(PCAP_ROOT "C:/Users/sreek/src/npcap-sdk-1.13/" CACHE PATH "Npcap SDK directory")
-    
+
     message(STATUS "Using Npcap SDK at: ${PCAP_ROOT}")
-    
+
     if(NOT EXISTS "${PCAP_ROOT}/Include/pcap.h")
         message(FATAL_ERROR "Npcap SDK not found at ${PCAP_ROOT}! Please install from https://npcap.com/")
     endif()
@@ -48,8 +47,41 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-add_executable(capture-agent
- "src/main.cpp" "src/Capturer.cpp" "src/HttpMessage.cpp" "src/Session.cpp" "src/SessionManager.cpp")
+message(STATUS "Fetching yaml-cpp...")
+FetchContent_Declare(
+    yaml-cpp
+    GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
+    GIT_TAG 0.8.0
+    GIT_SHALLOW TRUE
+)
+set(YAML_CPP_BUILD_TESTS OFF CACHE BOOL "Don't build tests")
+set(YAML_CPP_BUILD_TOOLS OFF CACHE BOOL "Don't build tools")
+FetchContent_MakeAvailable(yaml-cpp)
+
+message(STATUS "Fetching prometheus-cpp...")
+FetchContent_Declare(
+    prometheus-cpp
+    GIT_REPOSITORY https://github.com/jupp0r/prometheus-cpp.git
+    GIT_TAG v1.2.4
+    GIT_SHALLOW TRUE
+)
+set(ENABLE_PUSH OFF CACHE BOOL "Disable prometheus push")
+set(ENABLE_COMPRESSION OFF CACHE BOOL "Disable compression")
+set(ENABLE_TESTING OFF CACHE BOOL "Disable testing")
+FetchContent_MakeAvailable(prometheus-cpp)
+
+set(SOURCES
+    src/main.cpp
+    src/capture/Capturer.cpp
+    src/capture/Session.cpp
+    src/capture/SessionManager.cpp
+    src/parsers/HttpMessage.cpp
+    src/config/Config.cpp
+    src/sanitizers/PIISanitizer.cpp
+    src/metrics/MetricsServer.cpp
+)
+
+add_executable(capture-agent ${SOURCES})
 
 target_link_libraries(capture-agent
     PRIVATE
@@ -57,25 +89,28 @@ target_link_libraries(capture-agent
         Pcap++
         Packet++
         Common++
-        nlohmann_json::nlohmann_json 
+        nlohmann_json::nlohmann_json
+        yaml-cpp::yaml-cpp
+        prometheus-cpp::core
+        prometheus-cpp::pull
 )
 
 target_include_directories(capture-agent
     PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 if(WIN32)
-    target_link_libraries(capture-agent 
-        PRIVATE 
-            ws2_32      # Windows Sockets
-            iphlpapi    # IP Helper API
+    target_link_libraries(capture-agent
+        PRIVATE
+            ws2_32
+            iphlpapi
     )
-    
+
     set_target_properties(capture-agent PROPERTIES
         WIN32_EXECUTABLE FALSE
     )
-    
+
     if(EXISTS "${PCAP_ROOT}/Lib/x64/wpcap.dll")
         add_custom_command(TARGET capture-agent POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -84,7 +119,7 @@ if(WIN32)
             COMMENT "Copying wpcap.dll to output directory"
         )
     endif()
-    
+
     if(EXISTS "${PCAP_ROOT}/Lib/x64/Packet.dll")
         add_custom_command(TARGET capture-agent POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -95,15 +130,9 @@ if(WIN32)
     endif()
 endif()
 
-message(STATUS "")
-message(STATUS "========================================")
-message(STATUS "Rewind Capture Agent Configuration")
-message(STATUS "========================================")
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 message(STATUS "C++ Standard: ${CMAKE_CXX_STANDARD}")
 
 if(WIN32)
     message(STATUS "Npcap SDK: ${PCAP_ROOT}")
 endif()
-
-message(STATUS "========================================")

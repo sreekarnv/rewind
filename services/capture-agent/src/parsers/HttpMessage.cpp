@@ -1,4 +1,4 @@
-#include "HttpMessage.h"
+#include "rewind/parsers/HttpMessage.h"
 #include <sstream>
 #include <algorithm>
 #include <spdlog/spdlog.h>
@@ -32,7 +32,7 @@ namespace rwd {
                 i++;
                 continue;
             }
-            
+
             if (c >= 0xC0 && c <= 0xDF) {
                 if (i + 1 >= str.length()) return false;
                 if ((str[i + 1] & 0xC0) != 0x80) return false;
@@ -70,7 +70,7 @@ namespace rwd {
     {
     }
 
-    HttpMessage HttpMessage::parseFromData(const std::string& data, bool isClientToServer) 
+    HttpMessage HttpMessage::parseFromData(const std::string& data, bool isClientToServer)
     {
         HttpMessage msg;
         msg.setLength(data.length());
@@ -97,7 +97,7 @@ namespace rwd {
         std::string part1, part2, part3;
         firstLineStream >> part1 >> part2 >> part3;
 
-        if (part1.find("HTTP/") == 0) 
+        if (part1.find("HTTP/") == 0)
         {
             msg.setType(Type::Response);
             msg.setVersion(part1.substr(5));
@@ -184,12 +184,12 @@ namespace rwd {
         return "";
     }
 
-    void HttpMessage::setHeader(const std::string& name, const std::string& value) 
+    void HttpMessage::setHeader(const std::string& name, const std::string& value)
     {
         headers_[name] = value;
     }
 
-    std::string HttpMessage::getFirstLine() const 
+    std::string HttpMessage::getFirstLine() const
     {
         if (type_ == Type::Request) {
             return method_ + " " + uri_ + " HTTP/" + version_;
@@ -205,7 +205,7 @@ namespace rwd {
         nlohmann::json j = nlohmann::json::object();
 
         // Type
-        if (type_ == Type::Request) 
+        if (type_ == Type::Request)
         {
             j["type"] = "request";
             if (!method_.empty()) j["method"] = method_;
@@ -229,7 +229,7 @@ namespace rwd {
         nlohmann::json headersObj = nlohmann::json::object();
         for (const auto& [key, value] : headers_)
         {
-            if (!key.empty() && !value.empty()) 
+            if (!key.empty() && !value.empty())
             {
                 if (isValidUtf8(value))
                 {
@@ -252,11 +252,11 @@ namespace rwd {
                 contentType.find("application/xml") != std::string::npos ||
                 contentType.find("application/javascript") != std::string::npos;
 
-            if (isTextContent && body_.length() <= 10000) 
+            if (isTextContent && body_.length() <= 10000)
             {
-                if (isValidUtf8(body_)) 
+                if (isValidUtf8(body_))
                 {
-                    if (body_.length() > 500) 
+                    if (body_.length() > 500)
                     {
                         j["bodyPreview"] = body_.substr(0, 500) + "...";
                     }
@@ -270,7 +270,7 @@ namespace rwd {
                     j["bodyType"] = "binary";
                 }
             }
-            else 
+            else
             {
                 j["bodyType"] = contentType.empty() ? "unknown" : contentType;
             }
@@ -278,4 +278,4 @@ namespace rwd {
 
         return j;
     }
-} 
+}
