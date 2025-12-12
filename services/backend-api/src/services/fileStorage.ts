@@ -9,9 +9,6 @@ export class FileStorageService {
     this.dataDir = dataDir;
   }
 
-  /**
-   * Get all sessions from all JSON files
-   */
   async getAllSessions(): Promise<Session[]> {
     try {
       const files = await this.getJSONFiles();
@@ -34,13 +31,10 @@ export class FileStorageService {
     }
   }
 
-  /**
-   * Get session summaries (without full transaction data)
-   */
   async getSessionSummaries(): Promise<SessionSummary[]> {
     const sessions = await this.getAllSessions();
 
-    return sessions.map(session => ({
+    return sessions.map((session) => ({
       sessionId: session.sessionId,
       clientIp: session.clientIp,
       clientPort: session.clientPort,
@@ -49,55 +43,43 @@ export class FileStorageService {
       startTime: session.startTime,
       endTime: session.endTime,
       duration: session.duration,
-      transactionCount: session.transactionCount
+      transactionCount: session.transactionCount,
     }));
   }
 
-  /**
-   * Get a specific session by ID
-   */
   async getSessionById(sessionId: string): Promise<Session | null> {
     const sessions = await this.getAllSessions();
-    return sessions.find(s => s.sessionId === sessionId) || null;
+    return sessions.find((s) => s.sessionId === sessionId) || null;
   }
 
-  /**
-   * Get all JSON files in the data directory
-   */
   private async getJSONFiles(): Promise<string[]> {
     try {
       const files = await readdir(this.dataDir);
-      return files.filter(file => file.endsWith(".json"));
+      return files.filter((file) => file.endsWith(".json"));
     } catch (error) {
       console.error("Error reading directory:", error);
       return [];
     }
   }
 
-  /**
-   * Get statistics about captured sessions
-   */
   async getStats() {
     const sessions = await this.getAllSessions();
 
     const totalRequests = sessions.reduce(
       (sum, session) => sum + session.transactions.length,
-      0
+      0,
     );
 
     const methodCounts: Record<string, number> = {};
     const statusCounts: Record<number, number> = {};
 
-    sessions.forEach(session => {
-      session.transactions.forEach(transaction => {
-        // Only count if transaction has request
+    sessions.forEach((session) => {
+      session.transactions.forEach((transaction) => {
         if (transaction.request) {
-          // Count methods
           const method = transaction.request.method || "UNKNOWN";
           methodCounts[method] = (methodCounts[method] || 0) + 1;
         }
 
-        // Only count status if transaction has response
         if (transaction.response && transaction.response.statusCode) {
           const status = transaction.response.statusCode;
           statusCounts[status] = (statusCounts[status] || 0) + 1;
@@ -109,7 +91,7 @@ export class FileStorageService {
       totalSessions: sessions.length,
       totalRequests: totalRequests,
       methodDistribution: methodCounts,
-      statusDistribution: statusCounts
+      statusDistribution: statusCounts,
     };
   }
 }

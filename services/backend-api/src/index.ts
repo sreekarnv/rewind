@@ -1,26 +1,29 @@
 import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { FileStorageService } from "./services/fileStorage";
+import { RealtimeWatcher } from "./services/realtimeWatcher";
+import { CaptureManager } from "./services/captureManager";
 import { sessionsRoute } from "./routes/sessions";
+import { realtimeRoute } from "./routes/realtime";
+import { captureRoute } from "./routes/capture";
 
 const PORT = process.env.PORT || 8000;
 const DATA_DIR = process.env.DATA_DIR || "../capture-agent/output";
+const CAPTURE_AGENT_PATH = process.env.CAPTURE_AGENT_PATH;
+const CONFIG_PATH = process.env.CONFIG_PATH;
 
-// Initialize storage service
 const storage = new FileStorageService(DATA_DIR);
+const watcher = new RealtimeWatcher(DATA_DIR);
+const captureManager = new CaptureManager(CAPTURE_AGENT_PATH, CONFIG_PATH);
 
-// Create Elysia app
 const app = new Elysia()
-  // Add CORS support
   .use(
     cors({
-      origin: true, // Allow all origins in development
+      origin: true,
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-      credentials: true
-    })
+      credentials: true,
+    }),
   )
-
-  // Global error handler
   .onError(({ code, error, set }) => {
     console.error("Error:", error);
 
@@ -29,7 +32,7 @@ const app = new Elysia()
       return {
         error: "Not Found",
         message: "The requested resource was not found",
-        statusCode: 404
+        statusCode: 404,
       };
     }
 
@@ -38,7 +41,7 @@ const app = new Elysia()
       return {
         error: "Bad Request",
         message: "Invalid request parameters",
-        statusCode: 400
+        statusCode: 400,
       };
     }
 
@@ -46,21 +49,20 @@ const app = new Elysia()
     return {
       error: "Internal Server Error",
       message: error.message || "An unexpected error occurred",
-      statusCode: 500
+      statusCode: 500,
     };
   })
 
-  // Health check endpoint
   .get("/health", () => ({
     status: "ok",
     timestamp: new Date().toISOString(),
-    service: "rewind-backend-api"
+    service: "rewind-backend-api",
   }))
 
-  // API routes
   .use(sessionsRoute(storage))
+  .use(realtimeRoute(watcher, storage))
+  .use(captureRoute(captureManager))
 
-  // Start server
   .listen(PORT);
 
 console.log(`
@@ -75,8 +77,16 @@ Available endpoints:
   GET  /api/v1/sessions/:id       - Get session details
   GET  /api/v1/sessions/:id/requests - Get session requests
   GET  /api/v1/stats              - Get statistics
+  WS   /api/v1/realtime           - Real-time updates (WebSocket)
+  GET  /api/v1/realtime/status    - Real-time connection status
+  GET  /api/v1/capture/status     - Get capture agent status
+  POST /api/v1/capture/start      - Start capture agent
+  POST /api/v1/capture/stop       - Stop capture agent
+  POST /api/v1/capture/restart    - Restart capture agent
 
 Data directory: ${DATA_DIR}
+🔄 Real-time updates: ENABLED
+🎮 Capture controls: ENABLED
 `);
 
 export type App = typeof app;
