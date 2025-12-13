@@ -7,6 +7,7 @@ import { CaptureManager } from './services/captureManager';
 import { sessionsRoute } from './routes/sessions';
 import { realtimeRoute } from './routes/realtime';
 import { captureRoute } from './routes/capture';
+import { metricsRoutes } from './routes/metrics';
 
 const PORT = process.env.PORT || 8000;
 const DATA_DIR = process.env.DATA_DIR || '../capture-agent/output';
@@ -70,6 +71,7 @@ const app = new Elysia()
 	.use(sessionsRoute(storage, watcher))
 	.use(realtimeRoute(watcher, storage))
 	.use(captureRoute(captureManager))
+	.use(metricsRoutes)
 
 	.listen(PORT);
 
@@ -81,19 +83,22 @@ Health: http://localhost:${PORT}/health
 API Base: http://localhost:${PORT}/api/v1
 
 Available endpoints:
-  GET    /api/v1/sessions         - List all sessions
-  GET    /api/v1/sessions/:id     - Get session details
-  DELETE /api/v1/sessions/:id     - Delete a session
-  DELETE /api/v1/sessions/clear   - Clear all sessions
-  POST   /api/v1/sessions/filter  - Filter sessions
-  GET    /api/v1/stats            - Get statistics
-  WS     /api/v1/realtime         - Real-time updates (WebSocket)
-  GET    /api/v1/realtime/status  - Real-time connection status
-  GET    /api/v1/capture/status   - Get capture agent status
-  POST   /api/v1/capture/start    - Start capture agent
-  POST   /api/v1/capture/stop     - Stop capture agent
-  POST   /api/v1/capture/restart  - Restart capture agent
-  WS     /api/v1/capture/stream   - Terminal stream (WebSocket)
+  GET    /api/v1/sessions            - List all sessions
+  GET    /api/v1/sessions/:id        - Get session details
+  DELETE /api/v1/sessions/:id        - Delete a session
+  DELETE /api/v1/sessions/clear      - Clear all sessions
+  POST   /api/v1/sessions/filter     - Filter sessions
+  GET    /api/v1/stats               - Get statistics
+  WS     /api/v1/realtime            - Real-time updates (WebSocket)
+  GET    /api/v1/realtime/status     - Real-time connection status
+  GET    /api/v1/capture/status      - Get capture agent status
+  POST   /api/v1/capture/start       - Start capture agent
+  POST   /api/v1/capture/stop        - Stop capture agent
+  POST   /api/v1/capture/restart     - Restart capture agent
+  WS     /api/v1/capture/stream      - Terminal stream (WebSocket)
+  GET    /api/v1/metrics/raw         - Prometheus metrics (text)
+  GET    /api/v1/metrics/parsed      - Prometheus metrics (JSON)
+  GET    /api/v1/metrics/dashboard   - Dashboard metrics
 
 Data directory: ${DATA_DIR}
 MongoDB: ${MONGODB_URI}
