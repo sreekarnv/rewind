@@ -1,0 +1,24 @@
+{
+  "name": "@rewind/backend-api",
+  "version": "1.0.0",
+  "description": "Rewind Backend API - REST API for captured HTTP sessions",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --outdir ./dist --target bun",
+    "test": "bun test"
+  },
+  "keywords": ["rewind", "api", "http", "capture"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@elysiajs/cors": "^1.0.0",
+    "elysia": "^1.0.0",
+    "mongoose": "^9.0.1"
+  },
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}
