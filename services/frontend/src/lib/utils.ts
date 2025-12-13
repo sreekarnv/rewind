@@ -1,5 +1,3 @@
-// Utility functions for formatting and display
-
 /**
  * Format Unix timestamp to readable date string
  */

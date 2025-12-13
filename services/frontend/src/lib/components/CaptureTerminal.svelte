@@ -10,7 +10,6 @@
 
     const WS_URL = "ws://localhost:8000/api/v1/capture/stream";
 
-    // Subscribe to store
     $: ws = $terminalStore.websocket;
     $: isConnected = $terminalStore.isConnected;
     $: messages = $terminalStore.messages;
@@ -22,15 +21,12 @@
     });
 
     onDestroy(() => {
-        // Don't disconnect on component destroy to keep state
-        // The connection stays alive across navigation
     });
 
     $: if (show && !isConnected) {
         connect();
     }
 
-    // Auto-scroll when new messages arrive
     $: if (messages.length > 0 && autoScroll && terminalElement) {
         setTimeout(() => {
             terminalElement.scrollTop = terminalElement.scrollHeight;
@@ -48,14 +44,12 @@
 
             newWs.onmessage = (event) => {
                 try {
-                    // Log raw data for debugging
                     console.log(
                         "WebSocket received:",
                         typeof event.data,
                         event.data,
                     );
 
-                    // Handle both string and object data
                     let message;
                     if (typeof event.data === "string") {
                         try {
@@ -67,7 +61,6 @@
                                 "Data:",
                                 event.data,
                             );
-                            // If it's not JSON, treat it as plain text output
                             terminalStore.addMessage(event.data, "output");
                             return;
                         }

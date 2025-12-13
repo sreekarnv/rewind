@@ -1,6 +1,3 @@
-// TypeScript types matching backend API
-// Note: Using camelCase to match C++ capture agent output
-
 export interface HttpMessage {
 	method?: string;
 	uri?: string;
@@ -17,7 +14,7 @@ export interface HttpMessage {
 
 export interface HttpTransaction {
 	request: HttpMessage;
-	response?: HttpMessage; // Optional - may not exist for incomplete captures
+	response?: HttpMessage;
 	requestTime?: number;
 	responseTime?: number;
 	duration?: number;

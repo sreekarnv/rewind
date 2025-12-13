@@ -1,5 +1,3 @@
-// Capture control API client
-
 const API_BASE = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface CaptureState {

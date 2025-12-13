@@ -1,5 +1,3 @@
-// Real-time WebSocket client for live updates
-
 import type { SessionSummary, Stats } from './types';
 
 export interface RealtimeUpdate {
@@ -58,7 +56,6 @@ export class RealtimeClient {
 					console.log('Disconnected from real-time server');
 					this.ws = null;
 
-					// Attempt to reconnect if we should
 					if (this.shouldReconnect) {
 						this.scheduleReconnect();
 					}
@@ -97,7 +94,6 @@ export class RealtimeClient {
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
 			this.connect().catch(() => {
-				// Failed to reconnect, will try again
 			});
 		}, this.reconnectInterval);
 	}
@@ -108,7 +104,6 @@ export class RealtimeClient {
 	subscribe(callback: RealtimeCallback): () => void {
 		this.callbacks.add(callback);
 
-		// Return unsubscribe function
 		return () => {
 			this.callbacks.delete(callback);
 		};
@@ -144,7 +139,6 @@ export class RealtimeClient {
 	}
 }
 
-// Singleton instance
 let realtimeClient: RealtimeClient | null = null;
 
 /**
