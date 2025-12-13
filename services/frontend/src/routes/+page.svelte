@@ -147,47 +147,48 @@
 					class="card group"
 				>
 					<div class="space-y-3">
-						<!-- Session ID -->
 						<div class="flex items-start justify-between">
-							<h3
-								class="text-lg font-semibold text-gray-900 group-hover:text-primary-600"
-							>
-								{session.sessionId}
-							</h3>
-							<span class="badge badge-info"
-								>{session.transactionCount} requests</span
-							>
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2 mb-1">
+									<span class="badge badge-primary">{session.method}</span>
+									{#if session.statusCode}
+										<span
+											class="badge {session.statusCode < 300 ? 'badge-success' : session.statusCode < 400 ? 'badge-warning' : 'badge-error'}"
+										>
+											{session.statusCode}
+										</span>
+									{:else}
+										<span class="badge badge-warning">
+											No Response
+										</span>
+									{/if}
+								</div>
+								<p class="text-sm font-mono text-gray-600 truncate">
+									{session.uri}
+								</p>
+							</div>
 						</div>
 
-						<!-- Connection Info -->
 						<div class="grid grid-cols-2 gap-4 text-sm">
 							<div>
-								<p class="text-gray-500">Client</p>
-								<p class="font-medium text-gray-900">
-									{session.clientIp}:{session.clientPort}
+								<p class="text-gray-500">Source</p>
+								<p class="font-medium text-gray-900 font-mono text-xs">
+									{session.sourceIp}:{session.sourcePort}
 								</p>
 							</div>
 							<div>
-								<p class="text-gray-500">Server</p>
-								<p class="font-medium text-gray-900">
-									{session.serverIp}:{session.serverPort}
+								<p class="text-gray-500">Destination</p>
+								<p class="font-medium text-gray-900 font-mono text-xs">
+									{session.destIp}:{session.destPort}
 								</p>
 							</div>
 						</div>
 
-						<div class="grid grid-cols-2 gap-4 text-sm border-t pt-3">
-							<div>
-								<p class="text-gray-500">Started</p>
-								<p class="font-medium text-gray-900">
-									{formatTimestamp(session.startTime)}
-								</p>
-							</div>
-							<div>
-								<p class="text-gray-500">Duration</p>
-								<p class="font-medium text-gray-900">
-									{formatDuration(session.duration)}
-								</p>
-							</div>
+						<div class="text-sm border-t pt-3">
+							<p class="text-gray-500">Timestamp</p>
+							<p class="font-medium text-gray-900 text-xs">
+								{new Date(session.timestamp).toLocaleString()}
+							</p>
 						</div>
 					</div>
 				</a>

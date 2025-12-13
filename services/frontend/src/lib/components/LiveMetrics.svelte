@@ -36,7 +36,6 @@
         };
     });
 
-    $: totalRequests = stats?.totalRequests || 0;
     $: totalSessions = stats?.totalSessions || 0;
 </script>
 
@@ -100,17 +99,19 @@
             </div>
         </div>
     </div>
-    <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
+    <div class="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
         <div class="flex items-center justify-between">
             <div>
-                <p class="text-sm font-medium text-gray-500">Total Requests</p>
-                <p class="text-2xl font-bold text-gray-900">{totalRequests}</p>
+                <p class="text-sm font-medium text-gray-500">HTTP Methods</p>
+                <p class="text-2xl font-bold text-gray-900">
+                    {Object.keys(stats?.methodDistribution || {}).length}
+                </p>
             </div>
             <div
-                class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center"
+                class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center"
             >
                 <svg
-                    class="w-6 h-6 text-green-600"
+                    class="w-6 h-6 text-purple-600"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -120,7 +121,7 @@
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         stroke-width="2"
-                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
                     />
                 </svg>
             </div>

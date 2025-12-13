@@ -31,11 +31,11 @@ export class RealtimeClient {
 	connect(): Promise<void> {
 		return new Promise((resolve, reject) => {
 			try {
-				console.log('🔌 Connecting to real-time server...');
+				console.log('Connecting to real-time server...');
 				this.ws = new WebSocket(this.url);
 
 				this.ws.onopen = () => {
-					console.log('✅ Connected to real-time server');
+					console.log('Connected to real-time server');
 					this.shouldReconnect = true;
 					resolve();
 				};
@@ -50,12 +50,12 @@ export class RealtimeClient {
 				};
 
 				this.ws.onerror = (error) => {
-					console.error('❌ WebSocket error:', error);
+					console.error('WebSocket error:', error);
 					reject(error);
 				};
 
 				this.ws.onclose = () => {
-					console.log('🔌 Disconnected from real-time server');
+					console.log('Disconnected from real-time server');
 					this.ws = null;
 
 					// Attempt to reconnect if we should
@@ -93,7 +93,7 @@ export class RealtimeClient {
 			return;
 		}
 
-		console.log(`⏳ Reconnecting in ${this.reconnectInterval / 1000}s...`);
+		console.log(`Reconnecting in ${this.reconnectInterval / 1000}s...`);
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
 			this.connect().catch(() => {

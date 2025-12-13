@@ -42,7 +42,7 @@ export class CaptureManager {
     this.errorMessage = null;
 
     try {
-      console.log(`🚀 Starting capture agent: ${this.captureAgentPath}`);
+      console.log(`Starting capture agent: ${this.captureAgentPath}`);
 
       this.process = spawn(
         this.captureAgentPath,
@@ -68,7 +68,7 @@ export class CaptureManager {
 
       this.process.on("exit", (code, signal) => {
         console.log(
-          `📛 Capture agent exited with code ${code}, signal ${signal}`,
+          `Capture agent exited with code ${code}, signal ${signal}`,
         );
         this.status = "stopped";
         this.process = null;
@@ -80,7 +80,7 @@ export class CaptureManager {
       });
 
       this.process.on("error", (error) => {
-        console.error("❌ Failed to start capture agent:", error);
+        console.error("Failed to start capture agent:", error);
         this.status = "error";
         this.errorMessage = error.message;
         this.process = null;
@@ -99,7 +99,7 @@ export class CaptureManager {
 
       return this.getState();
     } catch (error) {
-      console.error("❌ Error starting capture agent:", error);
+      console.error("Error starting capture agent:", error);
       this.status = "error";
       this.errorMessage =
         error instanceof Error ? error.message : "Unknown error";
@@ -146,7 +146,7 @@ export class CaptureManager {
 
       return this.getState();
     } catch (error) {
-      console.error("❌ Error stopping capture agent:", error);
+      console.error("Error stopping capture agent:", error);
       this.status = "error";
       this.errorMessage =
         error instanceof Error ? error.message : "Unknown error";

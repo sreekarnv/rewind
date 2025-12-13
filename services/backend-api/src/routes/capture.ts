@@ -149,7 +149,7 @@ export const captureRoute = (captureManager: CaptureManager) =>
      */
     .ws("/stream", {
       open(ws) {
-        console.log("📡 Client connected to capture stream");
+        console.log("Client connected to capture stream");
 
         const unsubscribe = captureManager.onOutput((data) => {
           try {
@@ -177,6 +177,7 @@ export const captureRoute = (captureManager: CaptureManager) =>
             !Buffer.isBuffer(message)
           ) {
             data = message;
+            console.log("Received as object:", data);
           } else {
             let messageStr: string;
             if (typeof message === "string") {

@@ -3,7 +3,6 @@
 import type {
 	SessionListResponse,
 	SessionDetailResponse,
-	SessionRequestsResponse,
 	Stats
 } from './types';
 
@@ -33,12 +32,6 @@ class ApiClient {
 
 	async getSessionById(id: string): Promise<SessionDetailResponse> {
 		return this.fetch<SessionDetailResponse>(`/api/v1/sessions/${encodeURIComponent(id)}`);
-	}
-
-	async getSessionRequests(id: string): Promise<SessionRequestsResponse> {
-		return this.fetch<SessionRequestsResponse>(
-			`/api/v1/sessions/${encodeURIComponent(id)}/requests`
-		);
 	}
 
 	async getStats(): Promise<Stats> {

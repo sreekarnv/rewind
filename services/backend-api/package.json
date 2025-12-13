@@ -14,8 +14,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@elysiajs/cors": "^1.0.0",
     "elysia": "^1.0.0",
-    "@elysiajs/cors": "^1.0.0"
+    "mongoose": "^9.0.1"
   },
   "devDependencies": {
     "bun-types": "latest"

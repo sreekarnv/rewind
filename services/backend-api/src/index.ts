@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia';
 import { cors } from '@elysiajs/cors';
-import { FileStorageService } from './services/fileStorage';
+import mongoose from 'mongoose';
+import { MongoStorageService } from './services/mongoStorage';
 import { RealtimeWatcher } from './services/realtimeWatcher';
 import { CaptureManager } from './services/captureManager';
 import { sessionsRoute } from './routes/sessions';
@@ -11,10 +12,17 @@ const PORT = process.env.PORT || 8000;
 const DATA_DIR = process.env.DATA_DIR || '../capture-agent/output';
 const CAPTURE_AGENT_PATH = process.env.CAPTURE_AGENT_PATH;
 const CONFIG_PATH = process.env.CONFIG_PATH;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/rewind';
 
-const storage = new FileStorageService(DATA_DIR);
-const watcher = new RealtimeWatcher(DATA_DIR);
+await mongoose.connect(MONGODB_URI);
+console.log('Connected to MongoDB');
+
+const storage = new MongoStorageService();
+const watcher = new RealtimeWatcher(DATA_DIR, storage);
 const captureManager = new CaptureManager(CAPTURE_AGENT_PATH, CONFIG_PATH);
+
+watcher.start();
+console.log('File watcher started - continuously syncing to MongoDB');
 
 const app = new Elysia()
 	.use(
@@ -59,34 +67,39 @@ const app = new Elysia()
 		service: 'rewind-backend-api',
 	}))
 
-	.use(sessionsRoute(storage))
+	.use(sessionsRoute(storage, watcher))
 	.use(realtimeRoute(watcher, storage))
 	.use(captureRoute(captureManager))
 
 	.listen(PORT);
 
 console.log(`
-🚀 Rewind Backend API is running!
+Rewind Backend API is running!
 
-📍 Server: http://localhost:${PORT}
-📊 Health: http://localhost:${PORT}/health
-📚 API Base: http://localhost:${PORT}/api/v1
+Server: http://localhost:${PORT}
+Health: http://localhost:${PORT}/health
+API Base: http://localhost:${PORT}/api/v1
 
 Available endpoints:
-  GET  /api/v1/sessions           - List all sessions
-  GET  /api/v1/sessions/:id       - Get session details
-  GET  /api/v1/sessions/:id/requests - Get session requests
-  GET  /api/v1/stats              - Get statistics
-  WS   /api/v1/realtime           - Real-time updates (WebSocket)
-  GET  /api/v1/realtime/status    - Real-time connection status
-  GET  /api/v1/capture/status     - Get capture agent status
-  POST /api/v1/capture/start      - Start capture agent
-  POST /api/v1/capture/stop       - Stop capture agent
-  POST /api/v1/capture/restart    - Restart capture agent
+  GET    /api/v1/sessions         - List all sessions
+  GET    /api/v1/sessions/:id     - Get session details
+  DELETE /api/v1/sessions/:id     - Delete a session
+  DELETE /api/v1/sessions/clear   - Clear all sessions
+  POST   /api/v1/sessions/filter  - Filter sessions
+  GET    /api/v1/stats            - Get statistics
+  WS     /api/v1/realtime         - Real-time updates (WebSocket)
+  GET    /api/v1/realtime/status  - Real-time connection status
+  GET    /api/v1/capture/status   - Get capture agent status
+  POST   /api/v1/capture/start    - Start capture agent
+  POST   /api/v1/capture/stop     - Stop capture agent
+  POST   /api/v1/capture/restart  - Restart capture agent
+  WS     /api/v1/capture/stream   - Terminal stream (WebSocket)
 
 Data directory: ${DATA_DIR}
-🔄 Real-time updates: ENABLED
-🎮 Capture controls: ENABLED
+MongoDB: ${MONGODB_URI}
+Real-time updates: ENABLED
+Capture controls: ENABLED
+Terminal streaming: ENABLED
 `);
 
 export type App = typeof app;

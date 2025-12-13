@@ -1,10 +1,10 @@
 import { Elysia } from "elysia";
 import type { RealtimeWatcher } from "../services/realtimeWatcher";
-import type { FileStorageService } from "../services/fileStorage";
+import type { MongoStorageService } from "../services/mongoStorage";
 
 export const realtimeRoute = (
   watcher: RealtimeWatcher,
-  storage: FileStorageService,
+  storage: MongoStorageService,
 ) =>
   new Elysia({ prefix: "/api/v1" })
     .ws("/realtime", {

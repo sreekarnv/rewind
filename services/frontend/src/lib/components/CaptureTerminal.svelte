@@ -131,8 +131,8 @@
         };
         const messageStr = JSON.stringify(messageObj);
 
-        console.log("📤 Sending to backend:", messageObj);
-        console.log("📤 As JSON string:", messageStr);
+        console.log("Sending to backend:", messageObj);
+        console.log("As JSON string:", messageStr);
 
         ws.send(messageStr);
 
