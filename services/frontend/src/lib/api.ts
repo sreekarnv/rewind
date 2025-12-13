@@ -1,5 +1,3 @@
-// API client for backend communication
-
 import type {
 	SessionListResponse,
 	SessionDetailResponse,

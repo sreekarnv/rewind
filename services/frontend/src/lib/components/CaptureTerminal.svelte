@@ -1,52 +1,55 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
+    import { terminalStore } from "$lib/stores/terminalStore";
 
     export let show: boolean = false;
 
-    let ws: WebSocket | null = null;
-    let outputLines: string[] = [];
     let inputValue = "";
-    let isConnected = false;
     let terminalElement: HTMLDivElement;
     let autoScroll = true;
 
     const WS_URL = "ws://localhost:8000/api/v1/capture/stream";
 
+    $: ws = $terminalStore.websocket;
+    $: isConnected = $terminalStore.isConnected;
+    $: messages = $terminalStore.messages;
+
     onMount(() => {
-        if (show) {
+        if (show && !isConnected) {
             connect();
         }
     });
 
     onDestroy(() => {
-        disconnect();
     });
 
     $: if (show && !isConnected) {
         connect();
-    } else if (!show && isConnected) {
-        disconnect();
+    }
+
+    $: if (messages.length > 0 && autoScroll && terminalElement) {
+        setTimeout(() => {
+            terminalElement.scrollTop = terminalElement.scrollHeight;
+        }, 10);
     }
 
     function connect() {
         try {
-            ws = new WebSocket(WS_URL);
+            const newWs = new WebSocket(WS_URL);
 
-            ws.onopen = () => {
-                isConnected = true;
-                addOutput("=== Connected to capture agent ===\n");
+            newWs.onopen = () => {
+                terminalStore.setConnected(true);
+                terminalStore.addMessage("=== Connected to capture agent ===\n", "system");
             };
 
-            ws.onmessage = (event) => {
+            newWs.onmessage = (event) => {
                 try {
-                    // Log raw data for debugging
                     console.log(
                         "WebSocket received:",
                         typeof event.data,
                         event.data,
                     );
 
-                    // Handle both string and object data
                     let message;
                     if (typeof event.data === "string") {
                         try {
@@ -58,8 +61,7 @@
                                 "Data:",
                                 event.data,
                             );
-                            // If it's not JSON, treat it as plain text output
-                            addOutput(event.data);
+                            terminalStore.addMessage(event.data, "output");
                             return;
                         }
                     } else if (typeof event.data === "object") {
@@ -73,49 +75,38 @@
                     }
 
                     if (message.type === "output") {
-                        addOutput(message.data);
+                        terminalStore.addMessage(message.data, "output");
                     } else if (message.type === "input_ack") {
                         if (!message.success) {
-                            addOutput("ERROR: Failed to send input\n");
+                            terminalStore.addMessage("ERROR: Failed to send input\n", "output");
                         }
                     } else if (message.type === "error") {
-                        addOutput(`ERROR: ${message.message}\n`);
+                        terminalStore.addMessage(`ERROR: ${message.message}\n`, "output");
                     }
                 } catch (err) {
                     console.error("WebSocket message handler error:", err);
                 }
             };
 
-            ws.onerror = (error) => {
+            newWs.onerror = (error) => {
                 console.error("WebSocket error:", error);
-                addOutput("ERROR: WebSocket connection error\n");
+                terminalStore.addMessage("ERROR: WebSocket connection error\n", "output");
             };
 
-            ws.onclose = () => {
-                isConnected = false;
-                addOutput("=== Disconnected from capture agent ===\n");
+            newWs.onclose = () => {
+                terminalStore.setConnected(false);
+                terminalStore.setWebSocket(null);
+                terminalStore.addMessage("=== Disconnected from capture agent ===\n", "system");
             };
+
+            terminalStore.setWebSocket(newWs);
         } catch (error) {
             console.error("Failed to connect to capture stream:", error);
         }
     }
 
     function disconnect() {
-        if (ws) {
-            ws.close();
-            ws = null;
-            isConnected = false;
-        }
-    }
-
-    function addOutput(text: string) {
-        outputLines = [...outputLines, text];
-
-        if (autoScroll && terminalElement) {
-            setTimeout(() => {
-                terminalElement.scrollTop = terminalElement.scrollHeight;
-            }, 10);
-        }
+        terminalStore.disconnect();
     }
 
     function handleSubmit(e: Event) {
@@ -136,13 +127,13 @@
 
         ws.send(messageStr);
 
-        addOutput(`> ${inputValue}\n`);
+        terminalStore.addMessage(`> ${inputValue}\n`, "input");
 
         inputValue = "";
     }
 
     function clearTerminal() {
-        outputLines = [];
+        terminalStore.clearMessages();
     }
 
     function toggleAutoScroll() {
@@ -204,16 +195,16 @@
             bind:this={terminalElement}
             class="bg-gray-900 p-4 h-96 overflow-y-auto font-mono text-sm text-green-400"
         >
-            {#if outputLines.length === 0}
+            {#if messages.length === 0}
                 <div class="text-gray-500 italic">
                     Waiting for output from capture agent...
                     <br />
                     Start the capture agent to see output here.
                 </div>
             {:else}
-                {#each outputLines as line}
-                    <div class="whitespace-pre-wrap break-words">
-                        {line}
+                {#each messages as message}
+                    <div class="whitespace-pre-wrap break-words {message.type === 'input' ? 'text-yellow-400' : message.type === 'system' ? 'text-blue-400' : ''}">
+                        {message.text}
                     </div>
                 {/each}
             {/if}

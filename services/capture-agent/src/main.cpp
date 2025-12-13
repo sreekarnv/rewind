@@ -2,6 +2,7 @@
 #include "rewind/parsers/HttpMessage.h"
 #include "rewind/capture/SessionManager.h"
 #include "rewind/config/Config.h"
+#include "rewind/metrics/MetricsServer.h"
 #include <iostream>
 #include <thread>
 #include <iomanip>
@@ -27,7 +28,6 @@ spdlog::level::level_enum parseLogLevel(const std::string& level) {
 }
 
 int main(int argc, char* argv[]) {
-    // Parse command line arguments
     std::string configFile = "config/config.yaml";
 
     for (int i = 1; i < argc; ++i) {
@@ -44,23 +44,34 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Load configuration
     rwd::Config config;
     if (!config.loadFromFile(configFile)) {
         spdlog::warn("Failed to load config file: {}", configFile);
         spdlog::info("Using default configuration");
     }
 
-    // Set up logging
     spdlog::set_level(parseLogLevel(config.getLogging().level));
-
     spdlog::info("Rewind Capture Agent Starting...");
     spdlog::info("Version 1.0.0");
+
+    std::unique_ptr<rwd::MetricsServer> metricsServer;
+    if (config.isMetricsEnabled()) {
+        auto metricsConfig = config.getMetrics();
+        metricsServer = std::make_unique<rwd::MetricsServer>(
+            metricsConfig.port,
+            metricsConfig.endpoint
+        );
+        if (metricsServer->start()) {
+            spdlog::info("Metrics server started on port {}", metricsConfig.port);
+        } else {
+            spdlog::warn("Failed to start metrics server");
+            metricsServer.reset();
+        }
+    }
 
     rwd::SessionManager sessionManager;
     rwd::Capturer capturer;
 
-    // Select network interface
     auto interfaces = rwd::Capturer::getAvailableInterfaces();
     spdlog::info("Found {} network interfaces", interfaces.size());
 
@@ -84,8 +95,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Callback for HTTP messages
-    auto onHttpMessage = [&sessionManager](
+    auto onHttpMessage = [&sessionManager, &metricsServer](
         const rwd::HttpMessage& msg,
         const std::string& clientIp,
         int clientPort,
@@ -94,6 +104,14 @@ int main(int argc, char* argv[]) {
         bool isRequest)
         {
             sessionManager.addMessage(msg, clientIp, clientPort, serverIp, serverPort, isRequest);
+
+            if (metricsServer) {
+                if (isRequest) {
+                    metricsServer->incrementHttpRequests();
+                } else {
+                    metricsServer->incrementHttpResponses();
+                }
+            }
 
             spdlog::info("=== HTTP {} ===",
                 isRequest ? "Request" : "Response"
@@ -126,21 +144,30 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Capture loop with configurable limits
     auto startTime = std::chrono::steady_clock::now();
     int packetLimit = config.getPacketLimit();
     int timeoutSeconds = config.getTimeoutSeconds();
+    int lastPacketCount = 0;
 
     while (true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        // Check packet limit (0 = unlimited)
+        if (metricsServer) {
+            int currentPacketCount = capturer.getPacketCount();
+            int newPackets = currentPacketCount - lastPacketCount;
+            for (int i = 0; i < newPackets; i++) {
+                metricsServer->incrementPacketsProcessed();
+            }
+            lastPacketCount = currentPacketCount;
+
+            metricsServer->setActiveSessions(sessionManager.getSessionCount());
+        }
+
         if (packetLimit > 0 && capturer.getHttpMessageCount() >= packetLimit) {
             spdlog::info("Packet limit reached");
             break;
         }
 
-        // Check timeout
         auto elapsed = std::chrono::steady_clock::now() - startTime;
         if (std::chrono::duration_cast<std::chrono::seconds>(elapsed).count() >= timeoutSeconds) {
             spdlog::info("Timeout reached");
@@ -156,7 +183,15 @@ int main(int argc, char* argv[]) {
     sessionManager.closeAllSessions();
     spdlog::info("Sessions tracked: {}", sessionManager.getSessionCount());
 
-    // Convert to JSON
+    if (metricsServer) {
+        auto sessions = sessionManager.getAllSessions();
+        for (const auto& session : sessions) {
+            metricsServer->incrementSessionsClosed();
+            metricsServer->recordSessionDuration(session->getDuration());
+        }
+        metricsServer->setActiveSessions(0);
+    }
+
     spdlog::info("Converting {} sessions to JSON...", sessionManager.getSessionCount());
 
     nlohmann::json output;
@@ -172,12 +207,10 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Save to file
     std::filesystem::path outputDir = config.getOutputDirectory();
     std::filesystem::path outputFile = outputDir / config.getOutputFile();
 
     try {
-        // Create output directory if it doesn't exist
         std::filesystem::create_directories(outputDir);
 
         std::ofstream outFile(outputFile);
@@ -200,7 +233,6 @@ int main(int argc, char* argv[]) {
         spdlog::error("Failed to write JSON file: {}", e.what());
     }
 
-    // Print summary
     std::cout << "\n=== CAPTURE SUMMARY ===" << std::endl;
     std::cout << "Sessions: " << sessionManager.getSessionCount() << std::endl;
     std::cout << "Packets:  " << capturer.getPacketCount() << std::endl;

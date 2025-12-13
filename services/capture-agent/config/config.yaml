@@ -1,0 +1,42 @@
+# Rewind Capture Agent Configuration
+
+capture:
+  # Network interface index (leave commented to prompt at runtime)
+  # interface_index: 0
+
+  packet_limit: 100
+  timeout_seconds: 60
+  output_file: "captured_sessions.json"
+  output_directory: "./output"
+
+filters:
+  ports: [80, 8080, 3000, 8000]
+
+  # Whether to capture HTTP body
+  capture_body: true
+  # Maximum body size in bytes (1MB)
+  max_body_size: 1048576
+  # Custom BPF filter (overrides ports if specified)
+  # Example: "tcp and host 192.168.1.1"
+  # bpf_filter: ""
+
+logging:
+  # Log level: debug, info, warn, error
+  level: "info"
+  # Log file (leave empty for stdout only)
+  # file: "capture.log"
+
+metrics:
+  enabled: true
+  port: 9090
+  endpoint: "/metrics"
+
+sanitization:
+  enabled: false
+  sanitize_headers: true
+  sanitize_body: true
+  headers_to_sanitize:
+    - "Authorization"
+    - "Cookie"
+    - "Set-Cookie"
+    - "X-API-Key"
