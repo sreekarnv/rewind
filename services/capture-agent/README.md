@@ -40,6 +40,15 @@ A high-performance network packet capture agent written in C++20 that captures, 
 - **CMake**: 3.20 or higher
 - **C++ Compiler**: C++20 support required
 - **Git**: For dependency management
+- **PcapPlusPlus**: Automatically fetched via CMake FetchContent
+
+
+## Why PcapPlusPlus?
+
+PcapPlusPlus provides a high-level, zero-copy abstraction over libpcap/Npcap,
+allowing safe and efficient packet parsing while avoiding manual buffer management.
+This significantly reduces complexity compared to raw libpcap usage.
+
 
 ## Build Instructions
 
@@ -50,9 +59,7 @@ A high-performance network packet capture agent written in C++20 that captures, 
 2. **Clone and Build**
    ```bash
    cd services/capture-agent
-   mkdir build && cd build
-   cmake ..
-   cmake --build . --config Release
+   ./build.bat
    ```
 
 3. **Run**
