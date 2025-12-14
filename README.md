@@ -7,6 +7,7 @@
 [![SvelteKit](https://img.shields.io/badge/SvelteKit-1.x-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://kit.svelte.dev/)
 [![ElysiaJS](https://img.shields.io/badge/ElysiaJS-API-5e165d?style=flat-square&logo=elysia&logoColor=white)](https://elysiajs.com/)
 [![C++](https://img.shields.io/badge/C%2B%2B-Core-00599C?style=flat-square&logo=cplusplus&logoColor=white)](https://isocpp.org/)
+[![PcapPlusPlus](https://img.shields.io/badge/PcapPlusPlus-Packet%20Capture-2C2D72?style=flat-square)](https://pcapplusplus.github.io/)
 [![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-E6522C?style=flat-square&logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
@@ -20,7 +21,8 @@
 
 ## Overview
 
-Rewind is a modern debugging and monitoring tool designed to provide deep insight into network activity. It utilizes a decoupled architecture where a high-performance C++ agent handles raw packet capture, and a Bun/SvelteKit stack delivers a real-time, interactive web experience. It eliminates the need for manual command-line interaction by integrating capture controls and a terminal directly into the browser.
+Rewind is a modern debugging and monitoring tool designed to provide deep insight into network activity. It utilizes a decoupled architecture where a high-performance **C++ capture agent built on PcapPlusPlus** handles raw packet capture and HTTP reassembly, while a Bun/SvelteKit stack delivers a real-time, interactive web experience.
+
 
 ---
 
@@ -60,6 +62,19 @@ Rewind is a modern debugging and monitoring tool designed to provide deep insigh
 
 ---
 
+## 📸 Screenshots
+
+### Dashboard Overview
+![Metrics](docs/screenshots/metrics.png)
+
+### In-Browser Capture Terminal
+![Capture Terminal](docs/screenshots/capture-terminal.png)
+
+### Session Viewer
+![Session Viewer](docs/screenshots/session-detail.png)
+
+---
+
 ## 🏛️ Architecture
 
 Rewind employs a high-performance three-tier structure to decouple low-level capture from the high-level analysis and UI.
@@ -73,10 +88,28 @@ The central component is the **Backend API**, which acts as a bridge, process ma
 
 ---
 
+## 📁 Project Structure & Documentation
+
+Rewind is organized as a multi-component repository.  
+Each major component has its own dedicated README with detailed setup and implementation notes.
+
+| Component | Path | Documentation |
+|--------|------|---------------|
+| **Capture Agent** | `capture-agent/` | [Capture Agent README](services/capture-agent/README.md) |
+| **Backend API** | `services/backend-api/` | [Backend API README](services/backend-api/README.md) |
+| **Frontend UI** | `services/frontend/` | [Frontend README](services/frontend/README.md) |
+
+> 📌 Start with the **Capture Agent**, as it is a hard dependency for both the backend and frontend.
+
+---
+
 ## 🚀 Quick Start
 
 ### Prerequisites
-
+- **C++ Capture Agent (Required, First)**
+  - Must be built and runnable
+  - Requires Administrator / `sudo` access
+  - Produces JSON session files and metrics
 - **Bun 1.0+** (Recommended) or Node.js 18+
 - **Administrator / `sudo` access** (Required for the C++ capture agent to access network interfaces)
 
@@ -84,14 +117,15 @@ The central component is the **Backend API**, which acts as a bridge, process ma
 
 1.  **Clone the repository**
     ```bash
-    git clone <your-repo-link>
+    git clone https://github.com/sreekarnv/rewind.git
     cd rewind
     ```
 
 2.  **Install dependencies**
     ```bash
+    cd capture-agent && build.bat  # Windows only, builds PcapPlusPlus-based capture agent
     cd services/backend-api && bun install
-    cd ../frontend && npm install # or bun install
+    cd services/frontend && bun install 
     ```
 
 3.  **Start Services (Recommended: Browser Control)**
@@ -113,13 +147,14 @@ The central component is the **Backend API**, which acts as a bridge, process ma
 ## Core Components
 
 | Component | Stack | Port | Description |
-|---------|------|-------------|
+|---------|------|-------------|-----------|
 | **Frontend** | SvelteKit | 5173 | Real-time dashboard, Session Viewer, Capture Controls & Terminal. |
 | **Backend API** | Bun + Elysia | 8000 | Capture Manager, File Watcher, WebSocket Streamer, REST API. |
 | **Capture Agent** | C++ | N/A | Low-level packet capture, HTTP reassembly, PII filtering. |
 | **Metrics** | Prometheus | 9090 | Metrics endpoint exposed by the C++ agent. |
 
 ---
+
 
 ## API Examples
 
