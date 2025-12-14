@@ -6,7 +6,9 @@
     import { getRealtimeClient } from "$lib/realtime";
     import { sessionsQueries } from "$lib/queries";
     import CaptureControls from "$lib/components/CaptureControls.svelte";
-    import type { SessionSummary } from "$lib/types";
+    import type { SessionSummary, Session } from "$lib/types";
+    import { exportFullSessions } from "$lib/export";
+    import { client } from "$lib/client";
 
     const query = createQuery(() => sessionsQueries.all());
 
@@ -103,6 +105,64 @@
         selectedMethod = "";
         selectedStatusRange = "";
     }
+
+    let showExportMenu = $state(false);
+    let isExporting = $state(false);
+    let exportProgress = $state({ current: 0, total: 0 });
+
+    async function handleExport(format: "har" | "json" | "csv") {
+        isExporting = true;
+        showExportMenu = false;
+
+        try {
+            const fullSessions: Session[] = [];
+            exportProgress = { current: 0, total: filteredSessions.length };
+
+            for (let i = 0; i < filteredSessions.length; i++) {
+                const sessionSummary = filteredSessions[i];
+                try {
+                    const response =
+                        await client.api.v1.sessions[
+                            sessionSummary.sessionId
+                        ].get();
+                    if (response.data) {
+                        fullSessions.push(response.data.session);
+                    }
+                } catch (err) {
+                    console.error(
+                        `Failed to fetch session ${sessionSummary.sessionId}:`,
+                        err,
+                    );
+                }
+                exportProgress = {
+                    current: i + 1,
+                    total: filteredSessions.length,
+                };
+            }
+
+            exportFullSessions(fullSessions, format);
+        } catch (error) {
+            console.error("Export failed:", error);
+            alert("Export failed. Please try again.");
+        } finally {
+            isExporting = false;
+            exportProgress = { current: 0, total: 0 };
+        }
+    }
+
+    $effect(() => {
+        if (!showExportMenu) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (!target.closest(".export-menu-container")) {
+                showExportMenu = false;
+            }
+        };
+
+        document.addEventListener("click", handleClickOutside);
+        return () => document.removeEventListener("click", handleClickOutside);
+    });
 
     onMount(async () => {
         let unsubscribe: (() => void) | undefined;
@@ -247,6 +307,148 @@
                 </div>
             </div>
         </div>
+
+        {#if !isPending && filteredSessions.length > 0}
+            <div class="flex justify-end">
+                <div class="relative export-menu-container">
+                    <button
+                        onclick={() => (showExportMenu = !showExportMenu)}
+                        class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all font-semibold shadow-md flex items-center gap-2"
+                    >
+                        <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                            />
+                        </svg>
+                        Export Sessions
+                        <svg
+                            class="w-4 h-4 transition-transform {showExportMenu
+                                ? 'rotate-180'
+                                : ''}"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                            />
+                        </svg>
+                    </button>
+
+                    {#if showExportMenu}
+                        <div
+                            class="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-10"
+                        >
+                            <div class="p-2">
+                                <div
+                                    class="px-3 py-2 text-xs font-semibold text-gray-500 uppercase"
+                                >
+                                    Export {filteredSessions.length}
+                                    {filteredSessions.length === 1
+                                        ? "session"
+                                        : "sessions"}
+                                </div>
+                                <button
+                                    onclick={() => handleExport("har")}
+                                    class="w-full text-left px-3 py-2 rounded-lg hover:bg-purple-50 transition-colors flex items-start gap-3 group"
+                                >
+                                    <svg
+                                        class="w-5 h-5 text-purple-600 mt-0.5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    <div>
+                                        <div
+                                            class="font-semibold text-gray-900 group-hover:text-purple-700"
+                                        >
+                                            HAR Format
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            HTTP Archive (Chrome, Postman)
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    onclick={() => handleExport("json")}
+                                    class="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-start gap-3 group"
+                                >
+                                    <svg
+                                        class="w-5 h-5 text-blue-600 mt-0.5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
+                                        />
+                                    </svg>
+                                    <div>
+                                        <div
+                                            class="font-semibold text-gray-900 group-hover:text-blue-700"
+                                        >
+                                            JSON Format
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            Raw session data (developers)
+                                        </div>
+                                    </div>
+                                </button>
+                                <button
+                                    onclick={() => handleExport("csv")}
+                                    class="w-full text-left px-3 py-2 rounded-lg hover:bg-green-50 transition-colors flex items-start gap-3 group"
+                                >
+                                    <svg
+                                        class="w-5 h-5 text-green-600 mt-0.5"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
+                                        stroke="currentColor"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                        />
+                                    </svg>
+                                    <div>
+                                        <div
+                                            class="font-semibold text-gray-900 group-hover:text-green-700"
+                                        >
+                                            CSV Format
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            Spreadsheet (Excel, Google Sheets)
+                                        </div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    {/if}
+                </div>
+            </div>
+        {/if}
 
         <div
             class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100 space-y-4"
@@ -705,4 +907,61 @@
             </div>
         {/if}
     </div>
+
+    <!-- Export Progress Modal -->
+    {#if isExporting}
+        <div
+            class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
+        >
+            <div
+                class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
+            >
+                <div class="text-center">
+                    <div
+                        class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4"
+                    >
+                        <svg
+                            class="w-8 h-8 text-purple-600 animate-spin"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                        Preparing Export
+                    </h3>
+                    <p class="text-gray-600 mb-4">
+                        Fetching complete session data with headers and
+                        bodies...
+                    </p>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                        <div
+                            class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300"
+                            style="width: {exportProgress.total > 0
+                                ? (exportProgress.current /
+                                      exportProgress.total) *
+                                  100
+                                : 0}%"
+                        ></div>
+                    </div>
+                    <p class="text-sm text-gray-500">
+                        {exportProgress.current} of {exportProgress.total} sessions
+                    </p>
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>

@@ -13,6 +13,7 @@
     "@sveltejs/adapter-auto": "^3.0.0",
     "@sveltejs/kit": "^2.49.2",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
+    "@types/prismjs": "^1.26.5",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "svelte": "^5.46.0",
@@ -28,6 +29,7 @@
     "@tanstack/svelte-query-devtools": "^6.0.2",
     "chart.js": "^4.5.1",
     "highlight.js": "^11.9.0",
+    "prismjs": "^1.30.0",
     "svelte-chartjs": "^3.1.5"
   },
   "type": "module",

@@ -4,9 +4,26 @@
     import { page } from "$app/state";
     import { createQuery } from "@tanstack/svelte-query";
     import { sessionsQueries } from "$lib/queries";
+    import FormattedBody from "$lib/components/FormattedBody.svelte";
 
     const query = createQuery(() => sessionsQueries.detail(page.params.id!));
     const session = $derived(query.data?.session);
+
+    const requestContentType = $derived.by(() => {
+        if (!session?.request.headers) return undefined;
+        const header = session.request.headers.find(
+            (h) => h.name.toLowerCase() === "content-type",
+        );
+        return header?.value;
+    });
+
+    const responseContentType = $derived.by(() => {
+        if (!session?.response?.headers) return undefined;
+        const header = session.response.headers.find(
+            (h) => h.name.toLowerCase() === "content-type",
+        );
+        return header?.value;
+    });
 </script>
 
 <svelte:head>
@@ -301,33 +318,16 @@
                             </div>
                         {/each}
                     </div>
-                    {#if session.request.body}
-                        <div class="mt-6 pt-6 border-t border-gray-200">
-                            <h3
-                                class="font-semibold text-gray-900 mb-3 flex items-center gap-2"
-                            >
-                                <svg
-                                    class="w-4 h-4 text-green-600"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 6h16M4 12h16m-7 6h7"
-                                    />
-                                </svg>
-                                Request Body
-                            </h3>
-                            <pre
-                                class="bg-gradient-to-r from-gray-900 to-gray-800 text-green-300 p-4 rounded-xl font-mono text-xs overflow-x-auto shadow-inner border border-gray-700">{session
-                                    .request.body}</pre>
-                        </div>
-                    {/if}
                 </div>
             </div>
+
+            {#if session.request.body}
+                <FormattedBody
+                    content={session.request.body}
+                    contentType={requestContentType}
+                    title="Request Body"
+                />
+            {/if}
 
             {#if session.response}
                 <div
@@ -371,62 +371,16 @@
                                 </div>
                             {/each}
                         </div>
-                        <!-- {#if session.response.body}
-                            <div class="mt-6 pt-6 border-t border-gray-200">
-                                <h3
-                                    class="font-semibold text-gray-900 mb-3 flex items-center gap-2"
-                                >
-                                    <svg
-                                        class="w-4 h-4 text-purple-600"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M4 6h16M4 12h16m-7 6h7"
-                                        />
-                                    </svg>
-                                    Response Body
-                                </h3>
-                                <pre
-                                    class="bg-gradient-to-r from-gray-900 to-gray-800 text-purple-300 p-4 rounded-xl font-mono text-xs overflow-x-auto max-h-96 shadow-inner border border-gray-700">{session
-                                        .response.body}</pre>
-                            </div>
-                        {/if} -->
-                        {#if session.response.body}
-                            <div class="mt-6 pt-6 border-t border-gray-200">
-                                <h3
-                                    class="font-semibold text-gray-900 mb-3 flex items-center gap-2"
-                                >
-                                    <svg
-                                        class="w-4 h-4 text-purple-600"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M4 6h16M4 12h16m-7 6h7"
-                                        />
-                                    </svg>
-                                    Response Body
-                                </h3>
-                                <pre
-                                    class="bg-gradient-to-r from-gray-900 to-gray-800 text-purple-300 p-4 rounded-xl font-mono text-xs overflow-x-auto max-h-96 shadow-inner border border-gray-700">{JSON.stringify(
-                                        JSON.parse(session.response.body),
-                                        null,
-                                        4,
-                                    )}
-                                    </pre>
-                            </div>
-                        {/if}
                     </div>
                 </div>
+
+                {#if session.response.body}
+                    <FormattedBody
+                        content={session.response.body}
+                        contentType={responseContentType}
+                        title="Response Body"
+                    />
+                {/if}
             {:else}
                 <div
                     class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-yellow-200"
