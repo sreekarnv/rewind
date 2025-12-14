@@ -3,11 +3,13 @@
 # Rewind - Real-time HTTP Traffic Analyzer
 
 [![Bun](https://img.shields.io/badge/Bun-1.x-fbf02a?style=flat-square&logo=bun&logoColor=black)](https://bun.sh)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![SvelteKit](https://img.shields.io/badge/SvelteKit-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://kit.svelte.dev/)
-[![C++](https://img.shields.io/badge/C%2B%2B-Low--Level%20Capture-00599C?logo=cplusplus)](https://isocpp.org)
-[![ElysiaJS](https://img.shields.io/badge/ElysiaJS-API-5e165d?logo=elysia&logoColor=white)](https://elysiajs.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-1.x-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://kit.svelte.dev/)
+[![ElysiaJS](https://img.shields.io/badge/ElysiaJS-API-5e165d?style=flat-square&logo=elysia&logoColor=white)](https://elysiajs.com/)
+[![C++](https://img.shields.io/badge/C%2B%2B-Core-00599C?style=flat-square&logo=cplusplus&logoColor=white)](https://isocpp.org/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-E6522C?style=flat-square&logo=prometheus&logoColor=white)](https://prometheus.io/)
+[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
 
 **A high-performance, full-stack application for capturing, processing, and visualizing low-level HTTP network traffic in real-time.**
 
@@ -24,7 +26,7 @@ Rewind is a modern debugging and monitoring tool designed to provide deep insigh
 
 ## 🛠️ Tech Stack
 
-<p align="center">
+<p align="left">
   <a href="https://bun.sh/">
     <img src="https://img.shields.io/badge/Bun-fbf02a?style=for-the-badge&logo=bun&logoColor=black" />
   </a>
