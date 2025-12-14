@@ -7,7 +7,7 @@ REST API for viewing captured HTTP sessions from the Rewind capture agent.
 - **Runtime:** Bun
 - **Framework:** Elysia
 - **Language:** TypeScript
-- **Storage:** File-based (reads JSON from capture agent)
+- **Storage:** MongoDB and File-based (reads JSON from capture agent)
 
 ## Prerequisites
 

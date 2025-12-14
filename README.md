@@ -4,10 +4,11 @@
 
 [![Bun](https://img.shields.io/badge/Bun-1.x-fbf02a?style=flat-square&logo=bun&logoColor=black)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![SvelteKit](https://img.shields.io/badge/SvelteKit-1.x-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://kit.svelte.dev/)
+[![SvelteKit](https://img.shields.io/badge/SvelteKit-2.x-FF3E00?style=flat-square&logo=svelte&logoColor=white)](https://kit.svelte.dev/)
 [![ElysiaJS](https://img.shields.io/badge/ElysiaJS-API-5e165d?style=flat-square&logo=elysia&logoColor=white)](https://elysiajs.com/)
 [![C++](https://img.shields.io/badge/C%2B%2B-Core-00599C?style=flat-square&logo=cplusplus&logoColor=white)](https://isocpp.org/)
 [![PcapPlusPlus](https://img.shields.io/badge/PcapPlusPlus-Packet%20Capture-2C2D72?style=flat-square)](https://pcapplusplus.github.io/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7.x-green?logo=mongodb)](https://www.mongodb.com/)
 [![Prometheus](https://img.shields.io/badge/Prometheus-Metrics-E6522C?style=flat-square&logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 
@@ -40,6 +41,9 @@ Rewind is a modern debugging and monitoring tool designed to provide deep insigh
   </a>
   <a href="https://elysiajs.com/">
     <img src="https://img.shields.io/badge/ElysiaJS-5e165d?style=for-the-badge&logo=elysia&logoColor=white" />
+  </a>
+  <a href="https://www.mongodb.com/" target="_blank">
+    <img src="https://img.shields.io/badge/MongoDB-47A248?style=for-the-badge&logo=mongodb&logoColor=white" />
   </a>
   <a href="https://isocpp.org/">
     <img src="https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=cplusplus&logoColor=white" />
