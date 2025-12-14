@@ -1,11 +1,11 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
+    import { createQuery } from "@tanstack/svelte-query";
+    import { statsQueries } from "$lib/queries";
     import LiveMetrics from "$lib/components/LiveMetrics.svelte";
-    import type { PageData } from "./$types";
 
-    export let data: PageData;
-
-    $: stats = data.stats;
-    $: error = data.error;
+    const query = createQuery(() => statsQueries.all());
 
     function getPercentage(value: number, total: number): number {
         return total > 0 ? Math.round((value / total) * 100) : 0;
@@ -15,10 +15,18 @@
         return Object.entries(obj).sort((a, b) => b[1] - a[1]);
     }
 
-    $: methodEntries = stats ? sortByValue(stats.methodDistribution) : [];
-    $: statusEntries = stats ? sortByValue(stats.statusDistribution) : [];
-
-    $: totalRequests = stats?.totalSessions || 0;
+    const isPending = $derived(query.isPending);
+    const isError = $derived(query.isError);
+    const isSuccess = $derived(query.isSuccess);
+    const error = $derived(query.error);
+    const stats = $derived(query.data);
+    const methodEntries = $derived(
+        stats ? sortByValue(stats.methodDistribution) : [],
+    );
+    const statusEntries = $derived(
+        stats ? sortByValue(stats.statusDistribution) : [],
+    );
+    const totalRequests = $derived(stats?.totalSessions || 0);
 </script>
 
 <svelte:head>
@@ -42,9 +50,41 @@
             </p>
         </div>
 
-        <LiveMetrics initialStats={stats} />
-
-        {#if error}
+        {#if isPending}
+            <div
+                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
+            >
+                <div class="text-center">
+                    <div
+                        class="mx-auto w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mb-4"
+                    >
+                        <svg
+                            class="w-8 h-8 text-green-600 animate-spin"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                        Loading Statistics
+                    </h3>
+                    <p class="text-gray-600">Fetching traffic statistics...</p>
+                </div>
+            </div>
+        {:else if isError}
             <div
                 class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-red-200 p-6"
             >
@@ -66,17 +106,37 @@
                             </svg>
                         </div>
                     </div>
-                    <div>
-                        <h3 class="text-lg font-semibold text-gray-900">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
                             Error Loading Statistics
                         </h3>
-                        <p class="mt-1 text-gray-600">{error}</p>
+                        <p class="text-gray-600 mb-4">
+                            {error?.message || "Failed to load statistics"}
+                        </p>
+                        <button
+                            onclick={() => query.refetch()}
+                            class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all font-semibold shadow-md flex items-center gap-2"
+                        >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                />
+                            </svg>
+                            Retry
+                        </button>
                     </div>
                 </div>
             </div>
-        {/if}
-
-        {#if stats}
+        {:else if stats}
+            <LiveMetrics initialStats={stats} />
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div
                     class="group relative bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-green-100"
@@ -242,7 +302,7 @@
                                     <div
                                         class="bg-gradient-to-r from-green-500 to-emerald-500 h-3 rounded-full transition-all duration-500 shadow-sm"
                                         style="width: {percentage}%"
-                                    />
+                                    ></div>
                                 </div>
                             </div>
                         {/each}
@@ -311,7 +371,7 @@
                                                 ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
                                                 : 'bg-gradient-to-r from-red-500 to-red-600'}"
                                         style="width: {percentage}%"
-                                    />
+                                    ></div>
                                 </div>
                             </div>
                         {/each}

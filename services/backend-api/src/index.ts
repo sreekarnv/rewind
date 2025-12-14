@@ -1,79 +1,80 @@
-import { Elysia } from 'elysia';
-import { cors } from '@elysiajs/cors';
-import mongoose from 'mongoose';
-import { MongoStorageService } from './services/mongoStorage';
-import { RealtimeWatcher } from './services/realtimeWatcher';
-import { CaptureManager } from './services/captureManager';
-import { sessionsRoute } from './routes/sessions';
-import { realtimeRoute } from './routes/realtime';
-import { captureRoute } from './routes/capture';
-import { metricsRoutes } from './routes/metrics';
+import { Elysia } from "elysia";
+import { cors } from "@elysiajs/cors";
+import mongoose from "mongoose";
+import { MongoStorageService } from "./services/mongoStorage";
+import { RealtimeWatcher } from "./services/realtimeWatcher";
+import { CaptureManager } from "./services/captureManager";
+import { sessionsRoute } from "./routes/sessions";
+import { realtimeRoute } from "./routes/realtime";
+import { captureRoute } from "./routes/capture";
+import { metricsRoutes } from "./routes/metrics";
 
 const PORT = process.env.PORT || 8000;
-const DATA_DIR = process.env.DATA_DIR || '../capture-agent/output';
+const DATA_DIR = process.env.DATA_DIR || "../capture-agent/output";
 const CAPTURE_AGENT_PATH = process.env.CAPTURE_AGENT_PATH;
 const CONFIG_PATH = process.env.CONFIG_PATH;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/rewind';
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/rewind";
 
 await mongoose.connect(MONGODB_URI);
-console.log('Connected to MongoDB');
+console.log("Connected to MongoDB");
 
 const storage = new MongoStorageService();
 const watcher = new RealtimeWatcher(DATA_DIR, storage);
 const captureManager = new CaptureManager(CAPTURE_AGENT_PATH, CONFIG_PATH);
 
 watcher.start();
-console.log('File watcher started - continuously syncing to MongoDB');
+console.log("File watcher started - continuously syncing to MongoDB");
 
 const app = new Elysia()
-	.use(
-		cors({
-			origin: true,
-			methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-			credentials: true,
-		})
-	)
-	.onError(({ code, error, set }) => {
-		console.error('Error:', error);
+  .use(
+    cors({
+      origin: true,
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+      credentials: true,
+    }),
+  )
+  .onError(({ code, error, set }) => {
+    console.error("Error:", error);
 
-		if (code === 'NOT_FOUND') {
-			set.status = 404;
-			return {
-				error: 'Not Found',
-				message: 'The requested resource was not found',
-				statusCode: 404,
-			};
-		}
+    if (code === "NOT_FOUND") {
+      set.status = 404;
+      return {
+        error: "Not Found",
+        message: "The requested resource was not found",
+        statusCode: 404,
+      };
+    }
 
-		if (code === 'VALIDATION') {
-			set.status = 400;
-			return {
-				error: 'Bad Request',
-				message: 'Invalid request parameters',
-				statusCode: 400,
-			};
-		}
+    if (code === "VALIDATION") {
+      set.status = 400;
+      return {
+        error: "Bad Request",
+        message: "Invalid request parameters",
+        statusCode: 400,
+      };
+    }
 
-		set.status = 500;
-		return {
-			error: 'Internal Server Error',
-			message: (error as any).message || 'An unexpected error occurred',
-			statusCode: 500,
-		};
-	})
+    set.status = 500;
+    return {
+      error: "Internal Server Error",
+      message: (error as any).message || "An unexpected error occurred",
+      statusCode: 500,
+    };
+  })
 
-	.get('/health', () => ({
-		status: 'ok',
-		timestamp: new Date().toISOString(),
-		service: 'rewind-backend-api',
-	}))
+  .get("/health", () => ({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    service: "rewind-backend-api",
+  }))
 
-	.use(sessionsRoute(storage, watcher))
-	.use(realtimeRoute(watcher, storage))
-	.use(captureRoute(captureManager))
-	.use(metricsRoutes)
+  .use(sessionsRoute(storage, watcher))
+  .use(realtimeRoute(watcher, storage))
+  .use(captureRoute(captureManager))
+  .use(metricsRoutes)
 
-	.listen(PORT);
+  .listen(PORT);
 
 console.log(`
 Rewind Backend API is running!
