@@ -21,6 +21,89 @@
     const error = $derived(query.error);
     const sessions: SessionSummary[] = $derived(queryData?.sessions ?? []);
 
+    let searchQuery = $state("");
+    let selectedMethod = $state("");
+    let selectedStatusRange = $state("");
+
+    onMount(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        searchQuery = urlParams.get("search") || "";
+        selectedMethod = urlParams.get("method") || "";
+        selectedStatusRange = urlParams.get("status") || "";
+    });
+
+    $effect(() => {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set("search", searchQuery);
+        if (selectedMethod) params.set("method", selectedMethod);
+        if (selectedStatusRange) params.set("status", selectedStatusRange);
+
+        const newUrl = params.toString()
+            ? `?${params.toString()}`
+            : window.location.pathname;
+
+        if (window.location.search !== `?${params.toString()}`) {
+            window.history.replaceState({}, "", newUrl);
+        }
+    });
+
+    const filteredSessions = $derived.by(() => {
+        let result = sessions;
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(
+                (s) =>
+                    s.uri.toLowerCase().includes(query) ||
+                    s.method.toLowerCase().includes(query) ||
+                    (s.statusCode && s.statusCode.toString().includes(query)) ||
+                    s.sourceIp.includes(query) ||
+                    s.destIp.includes(query),
+            );
+        }
+
+        if (selectedMethod) {
+            result = result.filter((s) => s.method === selectedMethod);
+        }
+
+        if (selectedStatusRange) {
+            result = result.filter((s) => {
+                if (!s.statusCode) return selectedStatusRange === "no-response";
+                const code = s.statusCode;
+                switch (selectedStatusRange) {
+                    case "2xx":
+                        return code >= 200 && code < 300;
+                    case "3xx":
+                        return code >= 300 && code < 400;
+                    case "4xx":
+                        return code >= 400 && code < 500;
+                    case "5xx":
+                        return code >= 500 && code < 600;
+                    case "no-response":
+                        return false;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        return result;
+    });
+
+    const availableMethods = $derived(
+        [...new Set(sessions.map((s) => s.method))].sort(),
+    );
+
+    const hasActiveFilters = $derived(
+        searchQuery || selectedMethod || selectedStatusRange,
+    );
+
+    function clearFilters() {
+        searchQuery = "";
+        selectedMethod = "";
+        selectedStatusRange = "";
+    }
+
     onMount(async () => {
         let unsubscribe: (() => void) | undefined;
 
@@ -33,7 +116,6 @@
 
         unsubscribe = realtimeClient.subscribe((update) => {
             if (update.type === "init" || update.type === "update") {
-                // Update derived state only
                 lastUpdate = update.data.timestamp;
             }
         });
@@ -47,12 +129,13 @@
         realtimeClient.disconnect();
     });
 
-    const totalSessions = $derived(sessions.length);
+    const totalSessions = $derived(filteredSessions.length);
     const uniqueMethods = $derived(
-        [...new Set(sessions.map((s) => s.method))].length,
+        [...new Set(filteredSessions.map((s) => s.method))].length,
     );
     const successfulRequests = $derived(
-        sessions.filter((s) => s.statusCode && s.statusCode < 400).length,
+        filteredSessions.filter((s) => s.statusCode && s.statusCode < 400)
+            .length,
     );
 </script>
 
@@ -165,6 +248,170 @@
             </div>
         </div>
 
+        <div
+            class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100 space-y-4"
+        >
+            <div class="flex items-center gap-2">
+                <div class="flex-1 relative">
+                    <div
+                        class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
+                    >
+                        <svg
+                            class="w-5 h-5 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                        </svg>
+                    </div>
+                    <input
+                        type="text"
+                        bind:value={searchQuery}
+                        placeholder="Search by URL, method, status code, or IP address..."
+                        class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all bg-white"
+                    />
+                </div>
+                {#if hasActiveFilters}
+                    <button
+                        onclick={clearFilters}
+                        class="px-4 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all font-semibold shadow-md flex items-center gap-2 whitespace-nowrap"
+                    >
+                        <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                        Clear Filters
+                    </button>
+                {/if}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-3">
+                <span class="text-sm font-medium text-gray-700">Filters:</span>
+                <div class="relative">
+                    <select
+                        bind:value={selectedMethod}
+                        class="appearance-none pl-4 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all bg-white text-sm font-medium cursor-pointer"
+                    >
+                        <option value="">All Methods</option>
+                        {#each availableMethods as method}
+                            <option value={method}>{method}</option>
+                        {/each}
+                    </select>
+                    <div
+                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+                    >
+                        <svg
+                            class="w-4 h-4 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                            />
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <select
+                        bind:value={selectedStatusRange}
+                        class="appearance-none pl-4 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all bg-white text-sm font-medium cursor-pointer"
+                    >
+                        <option value="">All Status Codes</option>
+                        <option value="2xx">2xx - Success</option>
+                        <option value="3xx">3xx - Redirect</option>
+                        <option value="4xx">4xx - Client Error</option>
+                        <option value="5xx">5xx - Server Error</option>
+                        <option value="no-response">No Response</option>
+                    </select>
+                    <div
+                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+                    >
+                        <svg
+                            class="w-4 h-4 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 9l-7 7-7-7"
+                            />
+                        </svg>
+                    </div>
+                </div>
+
+                {#if searchQuery}
+                    <span
+                        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 text-sm font-medium"
+                    >
+                        <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                            />
+                        </svg>
+                        Search: "{searchQuery}"
+                    </span>
+                {/if}
+                {#if selectedMethod}
+                    <span
+                        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 text-sm font-medium"
+                    >
+                        Method: {selectedMethod}
+                    </span>
+                {/if}
+                {#if selectedStatusRange}
+                    <span
+                        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-100 text-green-700 border border-green-200 text-sm font-medium"
+                    >
+                        Status: {selectedStatusRange === "2xx"
+                            ? "2xx - Success"
+                            : selectedStatusRange === "3xx"
+                              ? "3xx - Redirect"
+                              : selectedStatusRange === "4xx"
+                                ? "4xx - Client Error"
+                                : selectedStatusRange === "5xx"
+                                  ? "5xx - Server Error"
+                                  : "No Response"}
+                    </span>
+                {/if}
+            </div>
+            {#if hasActiveFilters && !isPending}
+                <div class="text-sm text-gray-600">
+                    Showing {filteredSessions.length} of {sessions.length} sessions
+                </div>
+            {/if}
+        </div>
+
         {#if isPending}
             <div
                 class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
@@ -231,7 +478,7 @@
                             {error?.message || "Failed to load sessions"}
                         </p>
                         <button
-                            on:click={() => query.refetch()}
+                            onclick={() => query.refetch()}
                             class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all font-semibold shadow-md flex items-center gap-2"
                         >
                             <svg
@@ -252,7 +499,7 @@
                     </div>
                 </div>
             </div>
-        {:else if sessions.length === 0}
+        {:else if filteredSessions.length === 0}
             <div
                 class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
             >
@@ -274,35 +521,52 @@
                             />
                         </svg>
                     </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                        No Sessions Found
-                    </h3>
-                    <p class="text-gray-600 mb-6">
-                        Start the capture agent to begin capturing HTTP traffic.
-                    </p>
-                    <div
-                        class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-700"
-                    >
-                        <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+                    {#if hasActiveFilters}
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                            No Matching Sessions
+                        </h3>
+                        <p class="text-gray-600 mb-6">
+                            No sessions match your current filters. Try
+                            adjusting your search criteria.
+                        </p>
+                        <button
+                            onclick={clearFilters}
+                            class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all font-semibold shadow-md"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        Use the controls above to start capturing
-                    </div>
+                            Clear All Filters
+                        </button>
+                    {:else}
+                        <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                            No Sessions Found
+                        </h3>
+                        <p class="text-gray-600 mb-6">
+                            Start the capture agent to begin capturing HTTP
+                            traffic.
+                        </p>
+                        <div
+                            class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-700"
+                        >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                            Use the controls above to start capturing
+                        </div>
+                    {/if}
                 </div>
             </div>
         {:else}
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                {#each sessions as session}
+                {#each filteredSessions as session}
                     <a
                         href="/sessions/{encodeURIComponent(session.sessionId)}"
                         class="group bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 p-6 border border-gray-100 hover:border-purple-200 hover:scale-[1.02]"
