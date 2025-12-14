@@ -1,16 +1,23 @@
+<svelte:options runes={true} />
+
 <script lang="ts">
-    import { onMount, onDestroy } from "svelte";
-    import { Line } from "svelte-chartjs";
+    // @ts-nocheck
+    import { createQuery } from "@tanstack/svelte-query";
+    import { onDestroy } from "svelte";
+
     import {
         Chart as ChartJS,
         Title,
         Tooltip,
         Legend,
         LineElement,
+        LineController,
         LinearScale,
         PointElement,
         CategoryScale,
         Filler,
+        type ChartConfiguration,
+        type Chart,
     } from "chart.js";
 
     ChartJS.register(
@@ -18,6 +25,7 @@
         Tooltip,
         Legend,
         LineElement,
+        LineController,
         LinearScale,
         PointElement,
         CategoryScale,
@@ -32,87 +40,109 @@
         timestamp: number;
     }
 
-    let metricsData: MetricsData | null = null;
-    let loading = true;
-    let error = "";
-    let pollInterval: ReturnType<typeof setInterval> | null = null;
-
-    const maxDataPoints = 60;
-    let timestamps: string[] = [];
-    let packetsHistory: number[] = [];
-    let requestsHistory: number[] = [];
-    let responsesHistory: number[] = [];
-    let activeSessionsHistory: number[] = [];
-
-    let lastPackets = 0;
-    let lastRequests = 0;
-    let lastResponses = 0;
-
-    let packetsPerSecond = 0;
-    let requestsPerSecond = 0;
-    let responsesPerSecond = 0;
-
-    $: packetsChartData = {
-        labels: timestamps,
-        datasets: [
-            {
-                label: "Packets/sec",
-                data: packetsHistory,
-                borderColor: "rgb(59, 130, 246)",
-                backgroundColor: "rgba(59, 130, 246, 0.1)",
-                fill: true,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 0,
-                pointHoverRadius: 4,
+    const mockMetricsQueries = {
+        dashboard: () => ({
+            queryKey: ["dashboardMetrics"],
+            queryFn: async () => {
+                const response = await fetch(
+                    "http://localhost:8000/api/v1/metrics/dashboard",
+                );
+                if (!response.ok)
+                    throw new Error("Network response was not ok");
+                const data: MetricsData = await response.json();
+                return data;
             },
-        ],
+        }),
     };
 
-    $: httpChartData = {
-        labels: timestamps,
-        datasets: [
-            {
-                label: "Requests/sec",
-                data: requestsHistory,
-                borderColor: "rgb(34, 197, 94)",
-                backgroundColor: "rgba(34, 197, 94, 0.1)",
-                fill: true,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 0,
-                pointHoverRadius: 4,
-            },
-            {
-                label: "Responses/sec",
-                data: responsesHistory,
-                borderColor: "rgb(168, 85, 247)",
-                backgroundColor: "rgba(168, 85, 247, 0.1)",
-                fill: true,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 0,
-                pointHoverRadius: 4,
-            },
-        ],
-    };
+    const query = createQuery(() => ({
+        ...mockMetricsQueries.dashboard(),
+        refetchInterval: 1000,
+    }));
 
-    $: sessionsChartData = {
-        labels: timestamps,
-        datasets: [
-            {
-                label: "Active Sessions",
-                data: activeSessionsHistory,
-                borderColor: "rgb(251, 146, 60)",
-                backgroundColor: "rgba(251, 146, 60, 0.1)",
-                fill: true,
-                tension: 0.4,
-                borderWidth: 2,
-                pointRadius: 0,
-                pointHoverRadius: 4,
-            },
-        ],
-    };
+    const data = $derived(query.data as MetricsData | undefined);
+    const isPending = $derived(query.isPending);
+    const isError = $derived(query.isError);
+
+    const MAX_POINTS = 60;
+
+    const timestamps = $state.raw<string[]>([]);
+    const packetsHistory = $state.raw<number[]>([]);
+    const requestsHistory = $state.raw<number[]>([]);
+    const responsesHistory = $state.raw<number[]>([]);
+    const activeSessionsHistory = $state.raw<number[]>([]);
+
+    let packetsPerSecond = $state(0);
+    let requestsPerSecond = $state(0);
+    let responsesPerSecond = $state(0);
+
+    let packetsChartInstance: Chart | null = null;
+    let httpChartInstance: Chart | null = null;
+    let sessionsChartInstance: Chart | null = null;
+
+    let lastPackets = $state(0);
+    let lastRequests = $state(0);
+    let lastResponses = $state(0);
+    let lastTimestamp: number | null = $state(null);
+
+    $effect(() => {
+        if (!data) return;
+
+        const now = new Date();
+        const label = now.toLocaleTimeString();
+        let currentPacketsRate = 0;
+        let currentRequestsRate = 0;
+        let currentResponsesRate = 0;
+
+        if (lastTimestamp !== null) {
+            const diff = (data.timestamp - lastTimestamp) / 1000;
+
+            if (diff > 0) {
+                currentPacketsRate = Math.round(
+                    (data.packets.processed - lastPackets) / diff,
+                );
+                currentRequestsRate = Math.round(
+                    (data.http.requests - lastRequests) / diff,
+                );
+                currentResponsesRate = Math.round(
+                    (data.http.responses - lastResponses) / diff,
+                );
+            }
+        }
+
+        packetsPerSecond = currentPacketsRate;
+        requestsPerSecond = currentRequestsRate;
+        responsesPerSecond = currentResponsesRate;
+
+        timestamps.push(label);
+        packetsHistory.push(currentPacketsRate);
+        requestsHistory.push(currentRequestsRate);
+        responsesHistory.push(currentResponsesRate);
+        activeSessionsHistory.push(data.sessions.active);
+
+        if (timestamps.length > MAX_POINTS) {
+            timestamps.shift();
+            packetsHistory.shift();
+            requestsHistory.shift();
+            responsesHistory.shift();
+            activeSessionsHistory.shift();
+        }
+
+        lastPackets = data.packets.processed;
+        lastRequests = data.http.requests;
+        lastResponses = data.http.responses;
+        lastTimestamp = data.timestamp;
+
+        const updateChart = (chart: Chart | null) => {
+            if (chart) {
+                chart.update("none");
+            }
+        };
+
+        updateChart(packetsChartInstance);
+        updateChart(httpChartInstance);
+        updateChart(sessionsChartInstance);
+    });
 
     const chartOptions = {
         responsive: true,
@@ -123,10 +153,7 @@
                 labels: {
                     usePointStyle: true,
                     padding: 15,
-                    font: {
-                        size: 12,
-                        weight: "500",
-                    },
+                    font: { size: 12, weight: "500" as const },
                 },
             },
             tooltip: {
@@ -139,103 +166,115 @@
         scales: {
             y: {
                 beginAtZero: true,
-                ticks: {
-                    precision: 0,
-                },
-                grid: {
-                    color: "rgba(0, 0, 0, 0.05)",
-                },
+                ticks: { precision: 0 },
+                grid: { color: "rgba(0, 0, 0, 0.05)" },
             },
             x: {
-                grid: {
-                    display: false,
-                },
+                grid: { display: false },
             },
         },
-        animation: {
-            duration: 300,
-        },
-        interaction: {
-            intersect: false,
-            mode: "index" as const,
-        },
+        animation: { duration: 300 },
+        interaction: { intersect: false, mode: "index" as const },
     };
 
-    async function fetchMetrics() {
-        try {
-            const response = await fetch(
-                "http://localhost:8000/api/v1/metrics/dashboard",
-            );
-            const data: MetricsData = await response.json();
-
-            if (data.error) {
-                error =
-                    "Metrics service unavailable. Make sure the capture agent is running.";
-                loading = false;
-                return;
-            }
-
-            if (metricsData) {
-                const timeDiff =
-                    (data.timestamp - metricsData.timestamp) / 1000;
-                packetsPerSecond = Math.round(
-                    (data.packets.processed - lastPackets) / timeDiff,
-                );
-                requestsPerSecond = Math.round(
-                    (data.http.requests - lastRequests) / timeDiff,
-                );
-                responsesPerSecond = Math.round(
-                    (data.http.responses - lastResponses) / timeDiff,
-                );
-            }
-
-            lastPackets = data.packets.processed;
-            lastRequests = data.http.requests;
-            lastResponses = data.http.responses;
-
-            metricsData = data;
-            error = "";
-            loading = false;
-
-            const now = new Date();
-            const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}:${now.getSeconds().toString().padStart(2, "0")}`;
-
-            timestamps.push(timeStr);
-            packetsHistory.push(packetsPerSecond);
-            requestsHistory.push(requestsPerSecond);
-            responsesHistory.push(responsesPerSecond);
-            activeSessionsHistory.push(data.sessions.active);
-
-            if (timestamps.length > maxDataPoints) {
-                timestamps.shift();
-                packetsHistory.shift();
-                requestsHistory.shift();
-                responsesHistory.shift();
-                activeSessionsHistory.shift();
-            }
-
-            timestamps = timestamps;
-            packetsHistory = packetsHistory;
-            requestsHistory = requestsHistory;
-            responsesHistory = responsesHistory;
-            activeSessionsHistory = activeSessionsHistory;
-        } catch (err) {
-            error =
-                "Failed to fetch metrics. Make sure the backend API is running.";
-            loading = false;
-            console.error("Failed to fetch metrics:", err);
-        }
-    }
-
-    onMount(() => {
-        fetchMetrics();
-        pollInterval = setInterval(fetchMetrics, 1000);
+    const packetsChartConfig = $derived<ChartConfiguration<"line">>({
+        type: "line",
+        data: {
+            labels: timestamps,
+            datasets: [
+                {
+                    label: "Packets/sec",
+                    data: packetsHistory,
+                    borderColor: "rgb(59, 130, 246)",
+                    backgroundColor: "rgba(59, 130, 246, 0.1)",
+                    fill: "origin",
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+            ],
+        },
+        options: chartOptions,
     });
 
-    onDestroy(() => {
-        if (pollInterval) {
-            clearInterval(pollInterval);
+    const httpChartConfig = $derived<ChartConfiguration<"line">>({
+        type: "line",
+        data: {
+            labels: timestamps,
+            datasets: [
+                {
+                    label: "Requests/sec",
+                    data: requestsHistory,
+                    borderColor: "rgb(34, 197, 94)",
+                    backgroundColor: "rgba(34, 197, 94, 0.1)",
+                    tension: 0.4,
+                    borderWidth: 2,
+                    fill: "origin",
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+                {
+                    label: "Responses/sec",
+                    data: responsesHistory,
+                    borderColor: "rgb(168, 85, 247)",
+                    backgroundColor: "rgba(168, 85, 247, 0.1)",
+                    borderDash: [5, 5],
+                    fill: "origin",
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+            ],
+        },
+        options: chartOptions,
+    });
+
+    const sessionsChartConfig = $derived<ChartConfiguration<"line">>({
+        type: "line",
+        data: {
+            labels: timestamps,
+            datasets: [
+                {
+                    label: "Active Sessions",
+                    data: activeSessionsHistory,
+                    borderColor: "rgb(251, 146, 60)",
+                    backgroundColor: "rgba(251, 146, 60, 0.1)",
+                    fill: "origin",
+                    tension: 0.4,
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                },
+            ],
+        },
+        options: chartOptions,
+    });
+
+    const chartAction = (node: HTMLCanvasElement, { config, chartRef }) => {
+        const chart = new ChartJS(node, config);
+        chartRef(chart);
+
+        onDestroy(() => {
+            chart.destroy();
+            chartRef(null);
+        });
+
+        setTimeout(() => {
+            if (chart) chart.resize();
+        }, 0);
+
+        return {
+            destroy() {},
+        };
+    };
+
+    const displayError = $derived(() => {
+        if (isError) {
+            return "Failed to fetch metrics. Please ensure the backend API is running and accessible at http://localhost:8000.";
         }
+        return "Make sure you have started the Capture Agent";
     });
 </script>
 
@@ -268,7 +307,7 @@
             </div>
         </div>
 
-        {#if loading}
+        {#if isPending && !data}
             <div class="flex items-center justify-center h-96">
                 <div class="text-center">
                     <span
@@ -277,7 +316,7 @@
                     <p class="mt-4 text-gray-600">Loading metrics...</p>
                 </div>
             </div>
-        {:else if error}
+        {:else if isError || (data && (data as any).error)}
             <div
                 class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-yellow-200 p-6"
             >
@@ -301,11 +340,11 @@
                         <h3 class="text-lg font-semibold text-gray-900">
                             Service Unavailable
                         </h3>
-                        <p class="mt-1 text-gray-600">{error}</p>
+                        <p class="mt-1 text-gray-600">{displayError()}</p>
                     </div>
                 </div>
             </div>
-        {:else if metricsData}
+        {:else if data}
             <div
                 class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
             >
@@ -323,26 +362,25 @@
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
-                                >
-                                    <path
+                                    ><path
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         stroke-width="2"
                                         d="M13 10V3L4 14h7v7l9-11h-7z"
-                                    />
-                                </svg>
+                                    /></svg
+                                >
                             </div>
                             <span
                                 class="text-sm font-medium text-blue-600 bg-blue-50 px-3 py-1 rounded-full"
                             >
-                                {packetsPerSecond}/s
+                                {packetsPerSecond.toLocaleString()}/s
                             </span>
                         </div>
                         <h3 class="text-sm font-medium text-gray-600 mb-1">
                             Packets Processed
                         </h3>
                         <p class="text-3xl font-bold text-gray-900">
-                            {metricsData.packets.processed.toLocaleString()}
+                            {data.packets.processed.toLocaleString()}
                         </p>
                     </div>
                 </div>
@@ -361,26 +399,25 @@
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
-                                >
-                                    <path
+                                    ><path
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         stroke-width="2"
                                         d="M7 16l-4-4m0 0l4-4m-4 4h18"
-                                    />
-                                </svg>
+                                    /></svg
+                                >
                             </div>
                             <span
                                 class="text-sm font-medium text-green-600 bg-green-50 px-3 py-1 rounded-full"
                             >
-                                {requestsPerSecond}/s
+                                {requestsPerSecond.toLocaleString()}/s
                             </span>
                         </div>
                         <h3 class="text-sm font-medium text-gray-600 mb-1">
                             HTTP Requests
                         </h3>
                         <p class="text-3xl font-bold text-gray-900">
-                            {metricsData.http.requests.toLocaleString()}
+                            {data.http.requests.toLocaleString()}
                         </p>
                     </div>
                 </div>
@@ -399,26 +436,25 @@
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
-                                >
-                                    <path
+                                    ><path
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         stroke-width="2"
                                         d="M17 8l4 4m0 0l-4 4m4-4H3"
-                                    />
-                                </svg>
+                                    /></svg
+                                >
                             </div>
                             <span
                                 class="text-sm font-medium text-purple-600 bg-purple-50 px-3 py-1 rounded-full"
                             >
-                                {responsesPerSecond}/s
+                                {responsesPerSecond.toLocaleString()}/s
                             </span>
                         </div>
                         <h3 class="text-sm font-medium text-gray-600 mb-1">
                             HTTP Responses
                         </h3>
                         <p class="text-3xl font-bold text-gray-900">
-                            {metricsData.http.responses.toLocaleString()}
+                            {data.http.responses.toLocaleString()}
                         </p>
                     </div>
                 </div>
@@ -437,14 +473,13 @@
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"
-                                >
-                                    <path
+                                    ><path
                                         stroke-linecap="round"
                                         stroke-linejoin="round"
                                         stroke-width="2"
                                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                                    />
-                                </svg>
+                                    /></svg
+                                >
                             </div>
                             <span
                                 class="text-sm font-medium text-orange-600 bg-orange-50 px-3 py-1 rounded-full"
@@ -456,15 +491,13 @@
                             Active Sessions
                         </h3>
                         <p class="text-3xl font-bold text-gray-900">
-                            {metricsData.sessions.active}
+                            {data.sessions.active.toLocaleString()}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <!-- Charts -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <!-- Packets Chart -->
                 <div
                     class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
                 >
@@ -475,25 +508,28 @@
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
-                            >
-                                <path
+                                ><path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     stroke-width="2"
                                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                                />
-                            </svg>
+                                /></svg
+                            >
                         </div>
                         <h2 class="text-xl font-semibold text-gray-900">
                             Packet Processing Rate
                         </h2>
                     </div>
                     <div class="h-64">
-                        <Line data={packetsChartData} options={chartOptions} />
+                        <canvas
+                            use:chartAction={{
+                                config: packetsChartConfig,
+                                chartRef: (c) => (packetsChartInstance = c),
+                            }}
+                        ></canvas>
                     </div>
                 </div>
 
-                <!-- HTTP Traffic Chart -->
                 <div
                     class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
                 >
@@ -504,26 +540,29 @@
                                 fill="none"
                                 viewBox="0 0 24 24"
                                 stroke="currentColor"
-                            >
-                                <path
+                                ><path
                                     stroke-linecap="round"
                                     stroke-linejoin="round"
                                     stroke-width="2"
                                     d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-                                />
-                            </svg>
+                                /></svg
+                            >
                         </div>
                         <h2 class="text-xl font-semibold text-gray-900">
                             HTTP Traffic Rate
                         </h2>
                     </div>
                     <div class="h-64">
-                        <Line data={httpChartData} options={chartOptions} />
+                        <canvas
+                            use:chartAction={{
+                                config: httpChartConfig,
+                                chartRef: (c) => (httpChartInstance = c),
+                            }}
+                        ></canvas>
                     </div>
                 </div>
             </div>
 
-            <!-- Active Sessions Chart (Full Width) -->
             <div
                 class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100 mb-6"
             >
@@ -534,27 +573,29 @@
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
-                        >
-                            <path
+                            ><path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
                                 d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                            />
-                        </svg>
+                            /></svg
+                        >
                     </div>
                     <h2 class="text-xl font-semibold text-gray-900">
                         Active Sessions Over Time
                     </h2>
                 </div>
                 <div class="h-64">
-                    <Line data={sessionsChartData} options={chartOptions} />
+                    <canvas
+                        use:chartAction={{
+                            config: sessionsChartConfig,
+                            chartRef: (c) => (sessionsChartInstance = c),
+                        }}
+                    ></canvas>
                 </div>
             </div>
 
-            <!-- Bottom Stats Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Sessions Stats -->
                 <div
                     class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
                 >
@@ -569,7 +610,7 @@
                                 >Sessions Created</span
                             >
                             <span class="text-2xl font-bold text-blue-600"
-                                >{metricsData.sessions.created}</span
+                                >{data.sessions.created.toLocaleString()}</span
                             >
                         </div>
                         <div
@@ -579,7 +620,7 @@
                                 >Sessions Closed</span
                             >
                             <span class="text-2xl font-bold text-purple-600"
-                                >{metricsData.sessions.closed}</span
+                                >{data.sessions.closed.toLocaleString()}</span
                             >
                         </div>
                         <div
@@ -589,13 +630,12 @@
                                 >Currently Active</span
                             >
                             <span class="text-2xl font-bold text-green-600"
-                                >{metricsData.sessions.active}</span
+                                >{data.sessions.active.toLocaleString()}</span
                             >
                         </div>
                     </div>
                 </div>
 
-                <!-- Error Stats -->
                 <div
                     class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
                 >
@@ -604,86 +644,56 @@
                     </h3>
                     <div class="space-y-4">
                         <div
-                            class="p-4 bg-gradient-to-r from-{metricsData.errors
-                                .total === 0
-                                ? 'green'
-                                : 'red'}-50 to-{metricsData.errors.total === 0
-                                ? 'green'
-                                : 'red'}-100/50 rounded-xl"
+                            class="p-4 rounded-xl {data.errors.total === 0
+                                ? 'bg-gradient-to-r from-green-50 to-green-100/50'
+                                : 'bg-gradient-to-r from-red-50 to-red-100/50'}"
                         >
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-gray-700 font-medium"
                                     >Total Errors</span
                                 >
                                 <span
-                                    class="text-2xl font-bold text-{metricsData
-                                        .errors.total === 0
-                                        ? 'green'
-                                        : 'red'}-600"
+                                    class="text-2xl font-bold"
+                                    class:text-green-600={data.errors.total ===
+                                        0}
+                                    class:text-red-600={data.errors.total > 0}
                                 >
-                                    {metricsData.errors.total}
+                                    {data.errors.total.toLocaleString()}
                                 </span>
                             </div>
                             <p class="text-sm text-gray-600">
-                                {metricsData.errors.total === 0
+                                {data.errors.total === 0
                                     ? "✓ No errors detected"
                                     : "⚠ Check logs for details"}
                             </p>
                         </div>
                         <div
-                            class="p-4 bg-gradient-to-r from-{metricsData.errors
+                            class="p-4 rounded-xl {data.errors
                                 .droppedPackets === 0
-                                ? 'green'
-                                : 'red'}-50 to-{metricsData.errors
-                                .droppedPackets === 0
-                                ? 'green'
-                                : 'red'}-100/50 rounded-xl"
+                                ? 'bg-gradient-to-r from-green-50 to-green-100/50'
+                                : 'bg-gradient-to-r from-red-50 to-red-100/50'}"
                         >
                             <div class="flex items-center justify-between mb-2">
                                 <span class="text-gray-700 font-medium"
                                     >Dropped Packets</span
                                 >
                                 <span
-                                    class="text-2xl font-bold text-{metricsData
-                                        .errors.droppedPackets === 0
-                                        ? 'green'
-                                        : 'red'}-600"
+                                    class="text-2xl font-bold"
+                                    class:text-green-600={data.errors
+                                        .droppedPackets === 0}
+                                    class:text-red-600={data.errors
+                                        .droppedPackets > 0}
                                 >
-                                    {metricsData.errors.droppedPackets}
+                                    {data.errors.droppedPackets.toLocaleString()}
                                 </span>
                             </div>
                             <p class="text-sm text-gray-600">
-                                {metricsData.errors.droppedPackets === 0
+                                {data.errors.droppedPackets === 0
                                     ? "✓ All packets captured"
                                     : "⚠ Packet loss detected"}
                             </p>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Info Footer -->
-            <div
-                class="mt-6 bg-blue-50/80 backdrop-blur-sm rounded-2xl p-4 border border-blue-100"
-            >
-                <div class="flex items-center gap-3">
-                    <svg
-                        class="w-5 h-5 text-blue-500 flex-shrink-0"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                    <p class="text-sm text-gray-700">
-                        Metrics update every second. Data is sourced from the
-                        capture agent's Prometheus endpoint on port 9090.
-                    </p>
                 </div>
             </div>
         {/if}
