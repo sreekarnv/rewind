@@ -13,22 +13,31 @@
 
     let { session, onClose }: Props = $props();
 
-    let editedMethod = $state(session.request.method);
-    const protocol = session.destPort === 443 ? "https" : "http";
-    const formattedIp = session.destIp.includes(":")
-        ? `[${session.destIp}]`
-        : session.destIp;
+    // svelte-ignore state_referenced_locally
+    const initialData = {
+        method: session.request.method,
+        protocol: session.destPort === 443 ? "https" : "http",
+        ip: session.destIp,
+        port: session.destPort,
+        uri: session.request.uri,
+        headers: session.request.headers.map((h) => ({ ...h })),
+        body: session.request.body || "",
+    };
+
+    const formattedIp = initialData.ip.includes(":")
+        ? `[${initialData.ip}]`
+        : initialData.ip;
+
+    let editedMethod = $state(initialData.method);
     let editedUrl = $state(
-        `${protocol}://${formattedIp}:${session.destPort}${session.request.uri}`,
+        `${initialData.protocol}://${formattedIp}:${initialData.port}${initialData.uri}`,
     );
-    let editedHeaders = $state<HttpHeader[]>(
-        session.request.headers.map((h) => ({ ...h })),
-    );
-    let editedBody = $state(session.request.body || "");
+    let editedHeaders = $state<HttpHeader[]>(initialData.headers);
+    let editedBody = $state(initialData.body);
 
     let isReplaying = $state(false);
     let replayResponse = $state<ReplayResponse | null>(null);
-    let showingOriginal = $state(true); // Toggle between original and replay response
+    let showingOriginal = $state(true);
 
     function addHeader() {
         editedHeaders = [...editedHeaders, { name: "", value: "" }];
@@ -70,14 +79,10 @@
     }
 
     function resetToOriginal() {
-        editedMethod = session.request.method;
-        const protocol = session.destPort === 443 ? "https" : "http";
-        const formattedIp = session.destIp.includes(":")
-            ? `[${session.destIp}]`
-            : session.destIp;
-        editedUrl = `${protocol}://${formattedIp}:${session.destPort}${session.request.uri}`;
-        editedHeaders = session.request.headers.map((h) => ({ ...h }));
-        editedBody = session.request.body || "";
+        editedMethod = initialData.method;
+        editedUrl = `${initialData.protocol}://${formattedIp}:${initialData.port}${initialData.uri}`;
+        editedHeaders = initialData.headers.map((h) => ({ ...h }));
+        editedBody = initialData.body;
         replayResponse = null;
     }
 
@@ -430,7 +435,7 @@
                     {/if}
 
                     {#if showingOriginal}
-                        {#if session.response}
+                        {#if session.response?.body}
                             <FormattedBody
                                 content={session.response.body}
                                 contentType={originalContentType}

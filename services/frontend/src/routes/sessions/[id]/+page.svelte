@@ -6,6 +6,7 @@
     import { sessionsQueries } from "$lib/queries";
     import FormattedBody from "$lib/components/FormattedBody.svelte";
     import RequestReplay from "$lib/components/RequestReplay.svelte";
+    import EnhancedHeadersViewer from "$lib/components/EnhancedHeadersViewer.svelte";
 
     const query = createQuery(() => sessionsQueries.detail(page.params.id!));
     const session = $derived(query.data?.session);
@@ -305,14 +306,12 @@
             </div>
 
             <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden border border-gray-100"
+                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
             >
-                <div
-                    class="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200 flex items-center gap-3"
-                >
-                    <div class="p-2 bg-green-100 rounded-lg">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="p-2 bg-indigo-100 rounded-lg">
                         <svg
-                            class="w-5 h-5 text-green-600"
+                            class="w-6 h-6 text-indigo-600"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -321,31 +320,21 @@
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M7 16l-4-4m0 0l4-4m-4 4h18"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                             />
                         </svg>
                     </div>
-                    <h2 class="text-lg font-semibold text-gray-900">
-                        Request Headers
+                    <h2 class="text-2xl font-semibold text-gray-900">
+                        HTTP Headers
                     </h2>
                 </div>
-                <div class="p-6">
-                    <div class="font-mono text-sm space-y-2">
-                        {#each session.request.headers as header}
-                            <div
-                                class="flex gap-2 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
-                            >
-                                <span
-                                    class="text-green-600 font-bold min-w-[200px]"
-                                    >{header.name}:</span
-                                >
-                                <span class="text-gray-900 break-all"
-                                    >{header.value}</span
-                                >
-                            </div>
-                        {/each}
-                    </div>
-                </div>
+                <EnhancedHeadersViewer
+                    requestHeaders={session.request.headers}
+                    responseHeaders={session.response?.headers}
+                    method={session.request.method}
+                    url={session.request.uri}
+                    statusCode={session.response?.statusCode}
+                />
             </div>
 
             {#if session.request.body}
@@ -357,50 +346,6 @@
             {/if}
 
             {#if session.response}
-                <div
-                    class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden border border-gray-100"
-                >
-                    <div
-                        class="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200 flex items-center gap-3"
-                    >
-                        <div class="p-2 bg-purple-100 rounded-lg">
-                            <svg
-                                class="w-5 h-5 text-purple-600"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M17 8l4 4m0 0l-4 4m4-4H3"
-                                />
-                            </svg>
-                        </div>
-                        <h2 class="text-lg font-semibold text-gray-900">
-                            Response Headers
-                        </h2>
-                    </div>
-                    <div class="p-6">
-                        <div class="font-mono text-sm space-y-2">
-                            {#each session.response.headers as header}
-                                <div
-                                    class="flex gap-2 bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors"
-                                >
-                                    <span
-                                        class="text-purple-600 font-bold min-w-[200px]"
-                                        >{header.name}:</span
-                                    >
-                                    <span class="text-gray-900 break-all"
-                                        >{header.value}</span
-                                    >
-                                </div>
-                            {/each}
-                        </div>
-                    </div>
-                </div>
-
                 {#if session.response.body}
                     <FormattedBody
                         content={session.response.body}
