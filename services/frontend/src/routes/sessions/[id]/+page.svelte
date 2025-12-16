@@ -5,9 +5,12 @@
     import { createQuery } from "@tanstack/svelte-query";
     import { sessionsQueries } from "$lib/queries";
     import FormattedBody from "$lib/components/FormattedBody.svelte";
+    import RequestReplay from "$lib/components/RequestReplay.svelte";
 
     const query = createQuery(() => sessionsQueries.detail(page.params.id!));
     const session = $derived(query.data?.session);
+
+    let showReplayModal = $state(false);
 
     const requestContentType = $derived.by(() => {
         if (!session?.request.headers) return undefined;
@@ -38,25 +41,49 @@
     class="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50 to-purple-50 px-8 py-16"
 >
     <div class="max-w-7xl mx-auto space-y-6">
-        <a
-            href="/"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-indigo-600 border border-gray-100 hover:border-indigo-200"
-        >
-            <svg
-                class="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+        <div class="flex items-center justify-between">
+            <a
+                href="/"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-indigo-600 border border-gray-100 hover:border-indigo-200"
             >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 19l-7-7 7-7"
-                />
-            </svg>
-            <span class="font-medium">Back to Sessions</span>
-        </a>
+                <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 19l-7-7 7-7"
+                    />
+                </svg>
+                <span class="font-medium">Back to Sessions</span>
+            </a>
+
+            {#if query.isSuccess && session}
+                <button
+                    onclick={() => (showReplayModal = true)}
+                    class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 shadow-md hover:shadow-lg font-medium"
+                >
+                    <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                        />
+                    </svg>
+                    Replay Request
+                </button>
+            {/if}
+        </div>
 
         {#if query.isPending}
             <div
@@ -417,4 +444,8 @@
             {/if}
         {/if}
     </div>
+
+    {#if showReplayModal && session}
+        <RequestReplay {session} onClose={() => (showReplayModal = false)} />
+    {/if}
 </div>
