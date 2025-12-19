@@ -61,11 +61,11 @@ export const alertsRoute = new Elysia({ prefix: "/api/v1/alerts" })
               t.Literal("regex"),
             ]),
             value: t.Union([t.String(), t.Number()]),
-          })
+          }),
         ),
         cooldownMinutes: t.Optional(t.Number()),
       }),
-    }
+    },
   )
 
   // Update alert rule
@@ -99,7 +99,7 @@ export const alertsRoute = new Elysia({ prefix: "/api/v1/alerts" })
             t.Literal("warning"),
             t.Literal("error"),
             t.Literal("critical"),
-          ])
+          ]),
         ),
         conditions: t.Optional(
           t.Array(
@@ -120,12 +120,12 @@ export const alertsRoute = new Elysia({ prefix: "/api/v1/alerts" })
                 t.Literal("regex"),
               ]),
               value: t.Union([t.String(), t.Number()]),
-            })
-          )
+            }),
+          ),
         ),
         cooldownMinutes: t.Optional(t.Number()),
       }),
-    }
+    },
   )
 
   // Delete alert rule

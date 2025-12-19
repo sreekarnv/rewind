@@ -11,7 +11,6 @@ export class AlertService extends EventEmitter {
   constructor() {
     super();
     this.loadRules();
-    // Refresh rules every 30 seconds to pick up changes
     this.ruleRefreshInterval = setInterval(() => this.loadRules(), 30000);
   }
 
@@ -31,12 +30,10 @@ export class AlertService extends EventEmitter {
     }
 
     for (const rule of this.rules) {
-      // Check if rule is in cooldown period
       if (this.isInCooldown(rule)) {
         continue;
       }
 
-      // Check if all conditions match
       const matches = this.evaluateConditions(session, rule.conditions);
 
       if (matches) {
@@ -55,12 +52,19 @@ export class AlertService extends EventEmitter {
     return timeSinceLastTrigger < cooldownMs;
   }
 
-  private evaluateConditions(session: ISession, conditions: IAlertCondition[]): boolean {
-    // All conditions must match (AND logic)
-    return conditions.every((condition) => this.evaluateCondition(session, condition));
+  private evaluateConditions(
+    session: ISession,
+    conditions: IAlertCondition[],
+  ): boolean {
+    return conditions.every((condition) =>
+      this.evaluateCondition(session, condition),
+    );
   }
 
-  private evaluateCondition(session: ISession, condition: IAlertCondition): boolean {
+  private evaluateCondition(
+    session: ISession,
+    condition: IAlertCondition,
+  ): boolean {
     const { type, operator, value } = condition;
 
     switch (type) {
@@ -68,7 +72,6 @@ export class AlertService extends EventEmitter {
         return this.compareValue(session.response?.statusCode, operator, value);
 
       case "status_range":
-        // value should be like "5xx", "4xx", etc.
         if (typeof value !== "string") return false;
         const statusCode = session.response?.statusCode;
         if (!statusCode) return false;
@@ -80,7 +83,6 @@ export class AlertService extends EventEmitter {
           : statusPrefix !== parseInt(rangePrefix);
 
       case "response_time":
-        // Calculate response time from timestamps if available
         const responseTime = this.calculateResponseTime(session);
         return this.compareValue(responseTime, operator, value);
 
@@ -109,7 +111,7 @@ export class AlertService extends EventEmitter {
   private compareValue(
     actualValue: any,
     operator: string,
-    expectedValue: string | number
+    expectedValue: string | number,
   ): boolean {
     switch (operator) {
       case "equals":
@@ -135,14 +137,16 @@ export class AlertService extends EventEmitter {
   }
 
   private calculateResponseTime(session: ISession): number | null {
-    // This is a placeholder - you might want to add timing data to your session model
+    // TODO: This is a placeholder - you might want to add timing data to your session model
     // For now, return null if not available
     return null;
   }
 
-  private async triggerAlert(rule: IAlertRule, session: ISession): Promise<void> {
+  private async triggerAlert(
+    rule: IAlertRule,
+    session: ISession,
+  ): Promise<void> {
     try {
-      // Create notification
       const notification = await Notification.create({
         ruleId: rule._id,
         ruleName: rule.name,
@@ -160,16 +164,16 @@ export class AlertService extends EventEmitter {
         status: "unread",
       });
 
-      // Update rule's last triggered time
       await AlertRule.updateOne(
         { _id: rule._id },
-        { $set: { lastTriggered: new Date() } }
+        { $set: { lastTriggered: new Date() } },
       );
 
-      // Emit event for real-time notification
       this.emit("notification", notification);
 
-      console.log(`Alert triggered: ${rule.name} for session ${session.sessionId}`);
+      console.log(
+        `Alert triggered: ${rule.name} for session ${session.sessionId}`,
+      );
     } catch (error) {
       console.error("Failed to trigger alert:", error);
     }

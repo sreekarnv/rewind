@@ -27,7 +27,6 @@ const watcher = new RealtimeWatcher(DATA_DIR, storage);
 const captureManager = new CaptureManager(CAPTURE_AGENT_PATH, CONFIG_PATH);
 const alertService = new AlertService();
 
-// Hook alert service to storage events
 storage.on("session_saved", async (session) => {
   await alertService.checkSession(session);
 });
