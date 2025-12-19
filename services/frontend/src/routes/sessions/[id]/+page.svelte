@@ -7,6 +7,7 @@
     import FormattedBody from "$lib/components/FormattedBody.svelte";
     import RequestReplay from "$lib/components/RequestReplay.svelte";
     import EnhancedHeadersViewer from "$lib/components/EnhancedHeadersViewer.svelte";
+    import QueryParamsAndCookies from "$lib/components/QueryParamsAndCookies.svelte";
 
     const query = createQuery(() => sessionsQueries.detail(page.params.id!));
     const session = $derived(query.data?.session);
@@ -334,6 +335,37 @@
                     method={session.request.method}
                     url={session.request.uri}
                     statusCode={session.response?.statusCode}
+                />
+            </div>
+
+            <!-- Query Parameters & Cookies -->
+            <div
+                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
+            >
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="p-2 bg-cyan-100 rounded-lg">
+                        <svg
+                            class="w-6 h-6 text-cyan-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
+                            />
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-semibold text-gray-900">
+                        Parameters & Cookies
+                    </h2>
+                </div>
+                <QueryParamsAndCookies
+                    url={session.request.uri}
+                    requestHeaders={session.request.headers}
+                    responseHeaders={session.response?.headers}
                 />
             </div>
 
