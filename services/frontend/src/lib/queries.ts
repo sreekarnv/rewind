@@ -40,3 +40,43 @@ export const metricsQueries = {
     },
   }),
 };
+
+export const notificationQueries = {
+  all: (params?: { limit?: number; skip?: number; status?: "unread" | "read" | "dismissed" }) => ({
+    queryKey: ["notifications", params],
+    queryFn: async () => {
+      const response = await client.api.v1.notifications.get({
+        query: params || {},
+      });
+      if (response.error) throw new Error("Failed to fetch notifications");
+      return response.data;
+    },
+  }),
+  unreadCount: () => ({
+    queryKey: ["notifications", "unread", "count"],
+    queryFn: async () => {
+      const response = await client.api.v1.notifications.unread.count.get();
+      if (response.error) throw new Error("Failed to fetch unread count");
+      return response.data;
+    },
+  }),
+};
+
+export const alertQueries = {
+  all: () => ({
+    queryKey: ["alerts"],
+    queryFn: async () => {
+      const response = await client.api.v1.alerts.get();
+      if (response.error) throw new Error("Failed to fetch alert rules");
+      return response.data;
+    },
+  }),
+  detail: (id: string) => ({
+    queryKey: ["alerts", id],
+    queryFn: async () => {
+      const response = await client.api.v1.alerts({ id }).get();
+      if (response.error) throw new Error("Alert rule not found");
+      return response.data;
+    },
+  }),
+};

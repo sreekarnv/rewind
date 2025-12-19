@@ -4,10 +4,13 @@ import mongoose from "mongoose";
 import { MongoStorageService } from "./services/mongoStorage";
 import { RealtimeWatcher } from "./services/realtimeWatcher";
 import { CaptureManager } from "./services/captureManager";
+import { AlertService } from "./services/alertService";
 import { sessionsRoute } from "./routes/sessions";
 import { realtimeRoute } from "./routes/realtime";
 import { captureRoute } from "./routes/capture";
 import { metricsRoutes } from "./routes/metrics";
+import { alertsRoute } from "./routes/alerts";
+import { notificationsRoute } from "./routes/notifications";
 
 const PORT = process.env.PORT || 8000;
 const DATA_DIR = process.env.DATA_DIR || "../capture-agent/output";
@@ -22,9 +25,16 @@ console.log("Connected to MongoDB");
 const storage = new MongoStorageService();
 const watcher = new RealtimeWatcher(DATA_DIR, storage);
 const captureManager = new CaptureManager(CAPTURE_AGENT_PATH, CONFIG_PATH);
+const alertService = new AlertService();
+
+// Hook alert service to storage events
+storage.on("session_saved", async (session) => {
+  await alertService.checkSession(session);
+});
 
 watcher.start();
 console.log("File watcher started - continuously syncing to MongoDB");
+console.log("Alert service initialized and monitoring sessions");
 
 const app = new Elysia()
   .use(
@@ -70,9 +80,11 @@ const app = new Elysia()
   }))
 
   .use(sessionsRoute(storage, watcher))
-  .use(realtimeRoute(watcher, storage))
+  .use(realtimeRoute(watcher, storage, alertService))
   .use(captureRoute(captureManager))
   .use(metricsRoutes)
+  .use(alertsRoute)
+  .use(notificationsRoute)
 
   .listen(PORT);
 

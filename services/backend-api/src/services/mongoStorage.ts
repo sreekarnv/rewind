@@ -1,18 +1,26 @@
 import { Session, ISession } from "../models/Session";
 import type { CapturedSession, SessionSummary, SessionStats } from "./fileStorage";
+import { EventEmitter } from "events";
 
-export class MongoStorageService {
+export class MongoStorageService extends EventEmitter {
+  constructor() {
+    super();
+  }
   /**
    * Save a single session to MongoDB
    * Upserts based on sessionId to avoid duplicates
    */
   async saveSession(session: CapturedSession): Promise<void> {
     try {
-      await Session.findOneAndUpdate(
+      const savedSession = await Session.findOneAndUpdate(
         { sessionId: session.sessionId },
         session,
         { upsert: true, new: true }
       );
+
+      if (savedSession) {
+        this.emit("session_saved", savedSession);
+      }
     } catch (error) {
       console.error(`Error saving session ${session.sessionId}:`, error);
       throw error;
@@ -37,6 +45,15 @@ export class MongoStorageService {
 
       await Session.bulkWrite(bulkOps);
       console.log(`Synced ${sessions.length} sessions to MongoDB`);
+
+      // Fetch the saved sessions and emit events for alert checking
+      const savedSessions = await Session.find({
+        sessionId: { $in: sessions.map(s => s.sessionId) }
+      }).lean().exec();
+
+      savedSessions.forEach(session => {
+        this.emit("session_saved", session);
+      });
     } catch (error) {
       console.error("Error saving sessions to MongoDB:", error);
       throw error;
