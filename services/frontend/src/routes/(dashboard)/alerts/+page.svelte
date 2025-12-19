@@ -1,12 +1,19 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-    import { createQuery, createMutation, useQueryClient } from "@tanstack/svelte-query";
+    import {
+        createQuery,
+        createMutation,
+        useQueryClient,
+    } from "@tanstack/svelte-query";
     import { alertQueries } from "$lib/queries";
     import { client } from "$lib/client";
-    import type { AlertRule, AlertSeverity } from "$lib/types";
+    import type { AlertSeverity } from "$lib/types";
+    import CreateAlertModal from "$lib/components/CreateAlertModal.svelte";
 
     const queryClient = useQueryClient();
+
+    let isCreateModalOpen = $state(false);
 
     const alertsQuery = createQuery(() => alertQueries.all());
 
@@ -74,7 +81,6 @@
 </script>
 
 <div class="max-w-7xl mx-auto p-4 md:p-8">
-    <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
             <div>
@@ -84,13 +90,32 @@
                     Alert Rules
                 </h1>
                 <p class="text-gray-600">
-                    Configure rules to get notified when specific conditions are met
+                    Configure rules to get notified when specific conditions are
+                    met
                 </p>
             </div>
+            <button
+                onclick={() => (isCreateModalOpen = true)}
+                class="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md font-medium flex items-center gap-2"
+            >
+                <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                    />
+                </svg>
+                Create Alert Rule
+            </button>
         </div>
     </div>
 
-    <!-- Alert Rules List -->
     {#if alertsQuery.isLoading}
         <div class="flex items-center justify-center py-12">
             <div
@@ -98,9 +123,7 @@
             ></div>
         </div>
     {:else if alertsQuery.isError}
-        <div
-            class="bg-red-50 border border-red-200 rounded-xl p-6 text-center"
-        >
+        <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
             <svg
                 class="mx-auto h-12 w-12 text-red-400 mb-4"
                 fill="none"
@@ -114,8 +137,12 @@
                     d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
             </svg>
-            <h3 class="text-lg font-semibold text-red-900 mb-2">Error Loading Alert Rules</h3>
-            <p class="text-red-700">Failed to fetch alert rules. Please try again.</p>
+            <h3 class="text-lg font-semibold text-red-900 mb-2">
+                Error Loading Alert Rules
+            </h3>
+            <p class="text-red-700">
+                Failed to fetch alert rules. Please try again.
+            </p>
         </div>
     {:else if alerts.length === 0}
         <div
@@ -134,23 +161,32 @@
                     d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                 />
             </svg>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">No Alert Rules Yet</h3>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                No Alert Rules Yet
+            </h3>
             <p class="text-gray-600 mb-6">
-                Get started by creating your first alert rule to monitor HTTP traffic
+                Get started by creating your first alert rule to monitor HTTP
+                traffic
             </p>
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6 text-left max-w-2xl mx-auto">
-                <h4 class="font-semibold text-blue-900 mb-2">Quick Start Examples:</h4>
-                <p class="text-sm text-blue-800 mb-2">You can create alert rules using the backend API:</p>
-                <pre class="bg-blue-900 text-blue-100 p-3 rounded text-xs overflow-x-auto"><code>{`POST http://localhost:8000/api/v1/alerts
-{
-  "name": "Server Error Alert",
-  "severity": "error",
-  "conditions": [
-    {"type": "status_range", "operator": "equals", "value": "5xx"}
-  ],
-  "cooldownMinutes": 5
-}`}</code></pre>
-            </div>
+            <button
+                onclick={() => (isCreateModalOpen = true)}
+                class="px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md font-medium inline-flex items-center gap-2"
+            >
+                <svg
+                    class="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                    />
+                </svg>
+                Create Your First Alert Rule
+            </button>
         </div>
     {:else}
         <div class="grid gap-4">
@@ -162,11 +198,15 @@
                         <div class="flex items-start justify-between mb-4">
                             <div class="flex-1">
                                 <div class="flex items-center gap-3 mb-2">
-                                    <h3 class="text-xl font-semibold text-gray-900">
+                                    <h3
+                                        class="text-xl font-semibold text-gray-900"
+                                    >
                                         {alert.name}
                                     </h3>
                                     <span
-                                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border {getSeverityColor(alert.severity)}"
+                                        class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border {getSeverityColor(
+                                            alert.severity,
+                                        )}"
                                     >
                                         {alert.severity.toUpperCase()}
                                     </span>
@@ -179,12 +219,15 @@
                                     {/if}
                                 </div>
                                 {#if alert.description}
-                                    <p class="text-gray-600 mb-3">{alert.description}</p>
+                                    <p class="text-gray-600 mb-3">
+                                        {alert.description}
+                                    </p>
                                 {/if}
 
-                                <!-- Conditions -->
                                 <div class="mb-3">
-                                    <div class="text-sm font-medium text-gray-700 mb-2">
+                                    <div
+                                        class="text-sm font-medium text-gray-700 mb-2"
+                                    >
                                         Conditions:
                                     </div>
                                     <div class="flex flex-wrap gap-2">
@@ -198,18 +241,22 @@
                                     </div>
                                 </div>
 
-                                <!-- Metadata -->
-                                <div class="flex items-center gap-4 text-sm text-gray-500">
-                                    <span>Cooldown: {alert.cooldownMinutes} min</span>
+                                <div
+                                    class="flex items-center gap-4 text-sm text-gray-500"
+                                >
+                                    <span
+                                        >Cooldown: {alert.cooldownMinutes} min</span
+                                    >
                                     {#if alert.lastTriggered}
                                         <span>
-                                            Last triggered: {new Date(alert.lastTriggered).toLocaleString()}
+                                            Last triggered: {new Date(
+                                                alert.lastTriggered,
+                                            ).toLocaleString()}
                                         </span>
                                     {/if}
                                 </div>
                             </div>
 
-                            <!-- Actions -->
                             <div class="flex items-center gap-2 ml-4">
                                 <button
                                     onclick={() => handleToggle(alert._id)}
@@ -270,4 +317,9 @@
             {/each}
         </div>
     {/if}
+
+    <CreateAlertModal
+        isOpen={isCreateModalOpen}
+        onClose={() => (isCreateModalOpen = false)}
+    />
 </div>
