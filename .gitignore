@@ -1047,3 +1047,5 @@ dkms.conf
 *.md
 !README.md
 output/
+*.bat
+*.ps1

@@ -87,3 +87,64 @@ export interface ErrorResponse {
   message: string;
   statusCode: number;
 }
+
+export type AlertSeverity = "info" | "warning" | "error" | "critical";
+export type NotificationStatus = "unread" | "read" | "dismissed";
+
+export interface Notification {
+  _id: string;
+  ruleId: string;
+  ruleName: string;
+  severity: AlertSeverity;
+  message: string;
+  sessionId: string;
+  sessionData: {
+    method: string;
+    uri: string;
+    statusCode?: number;
+    sourceIp: string;
+    destIp: string;
+    timestamp: string;
+  };
+  status: NotificationStatus;
+  createdAt: string;
+  updatedAt: string;
+  readAt?: string;
+  dismissedAt?: string;
+  emailSent?: boolean;
+  emailSentAt?: string;
+  emailError?: string;
+  emailAttempts?: number;
+}
+
+export interface NotificationListResponse {
+  notifications: Notification[];
+  total: number;
+  unreadCount: number;
+  limit: number;
+  skip: number;
+}
+
+export interface AlertCondition {
+  type: "status_code" | "status_range" | "response_time" | "method" | "url_pattern";
+  operator: "equals" | "not_equals" | "greater_than" | "less_than" | "contains" | "regex";
+  value: string | number;
+}
+
+export interface AlertRule {
+  _id: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  severity: AlertSeverity;
+  conditions: AlertCondition[];
+  cooldownMinutes: number;
+  createdAt: string;
+  updatedAt: string;
+  lastTriggered?: string;
+}
+
+export interface AlertRuleListResponse {
+  rules: AlertRule[];
+  total: number;
+}

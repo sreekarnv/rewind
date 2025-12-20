@@ -77,6 +77,9 @@ Rewind is a modern debugging and monitoring tool designed to provide deep insigh
 ### Session Viewer
 ![Session Viewer](docs/screenshots/session-detail.png)
 
+### Alert Rules
+![Session Viewer](docs/screenshots/alert-rules.png)
+
 ---
 
 ## 🏛️ Architecture
