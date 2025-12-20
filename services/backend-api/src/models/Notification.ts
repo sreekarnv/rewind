@@ -22,6 +22,10 @@ export interface INotification extends Document {
   updatedAt: Date;
   readAt?: Date;
   dismissedAt?: Date;
+  emailSent?: boolean;
+  emailSentAt?: Date;
+  emailError?: string;
+  emailAttempts?: number;
 }
 
 const NotificationSchema = new Schema<INotification>(
@@ -50,6 +54,10 @@ const NotificationSchema = new Schema<INotification>(
     },
     readAt: { type: Date },
     dismissedAt: { type: Date },
+    emailSent: { type: Boolean, default: false },
+    emailSentAt: { type: Date },
+    emailError: { type: String },
+    emailAttempts: { type: Number, default: 0 },
   },
   {
     timestamps: true,
@@ -61,5 +69,6 @@ NotificationSchema.index({ status: 1, createdAt: -1 });
 NotificationSchema.index({ sessionId: 1 });
 NotificationSchema.index({ ruleId: 1 });
 NotificationSchema.index({ createdAt: -1 });
+NotificationSchema.index({ emailSent: 1, createdAt: -1 });
 
 export const Notification = mongoose.model<INotification>("Notification", NotificationSchema);
