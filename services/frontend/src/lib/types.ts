@@ -111,6 +111,10 @@ export interface Notification {
   updatedAt: string;
   readAt?: string;
   dismissedAt?: string;
+  emailSent?: boolean;
+  emailSentAt?: string;
+  emailError?: string;
+  emailAttempts?: number;
 }
 
 export interface NotificationListResponse {
