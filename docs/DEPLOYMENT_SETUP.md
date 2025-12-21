@@ -169,7 +169,7 @@ See [VitePress Theme documentation](https://vitepress.dev/guide/extending-defaul
 
 ### Adding Screenshots
 
-1. Add images to `docs/screenshots/` or `docs/public/`
+1. Add images to `docs/public/`
 2. Reference in markdown:
    ```markdown
    ![Alt text](./screenshots/image.png)

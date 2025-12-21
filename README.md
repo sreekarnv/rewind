@@ -78,16 +78,16 @@ Rewind is a modern debugging and monitoring tool designed to provide deep insigh
 ## 📸 Screenshots
 
 ### Dashboard Overview
-![Metrics](docs/screenshots/metrics.png)
+![Metrics](docs/public/metrics.png)
 
 ### In-Browser Capture Terminal
-![Capture Terminal](docs/screenshots/capture-terminal.png)
+![Capture Terminal](docs/public/capture-terminal.png)
 
 ### Session Viewer
-![Session Viewer](docs/screenshots/session-detail.png)
+![Session Viewer](docs/public/session-detail.png)
 
 ### Alert Rules
-![Session Viewer](docs/screenshots/alert-rules.png)
+![Session Viewer](docs/public/alert-rules.png)
 
 ---
 
