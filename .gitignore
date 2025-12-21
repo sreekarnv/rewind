@@ -1044,8 +1044,6 @@ dkms.conf
 # Raspberry Pi Pico disassembler file
 *.dis
 
-*.md
-!README.md
 output/
 *.bat
 *.ps1

@@ -57,28 +57,37 @@ Rewind is a modern debugging and monitoring tool designed to provide deep insigh
 
 ## ✨ Features
 
+### Core Capture & Analysis
 - **🌐 In-Browser Capture Terminal:** Interact with the C++ capture agent to select network interfaces, view real-time logs, and monitor the capture process directly from the web UI via a two-way WebSocket stream.
 - **🎮 Seamless Capture Controls:** Start, Stop, and Restart the low-level C++ process using a dedicated control panel in the browser. Features graceful shutdown using `SIGTERM` with a `SIGKILL` fallback for process cleanup.
 - **📈 Real-time Traffic Metrics:** The UI polls the backend status every 2 seconds to ensure the status, uptime, and process ID are always up-to-date, and to catch process crashes immediately.
-- **🛡️ Robust Data Handling (Incomplete Transactions):** Gracefully handles sessions where a request lacks a response by making response-related fields optional, marking these transactions as **`Pending`** in the UI, and preventing crashes.
-- **✅ Consistent Data Format (CamelCase):** Standardizes all field names to **`camelCase`** (`sessionId`, `clientIp`, `statusCode`) across the C++ agent's JSON output, Backend TypeScript interfaces, and Frontend Svelte components to ensure data integrity and prevent `undefined` errors.
-- **🔒 PII Sanitization (Inferred from Docs):** The C++ capture agent is designed to automatically anonymize sensitive data (e.g., email addresses, API keys) during packet capture.
+- **🛡️ Robust Data Handling:** Gracefully handles incomplete transactions, marking sessions without responses as **`Pending`** in the UI.
+- **✅ Consistent Data Format:** Standardizes all field names to **`camelCase`** across C++ agent, Backend, and Frontend for data integrity.
+- **🔒 PII Sanitization:** Automatically anonymizes sensitive data (email addresses, API keys) during packet capture.
+
+### Advanced Features
+- **🔄 Request Replay:** Re-send captured HTTP requests with one click. Perfect for debugging and testing API endpoints.
+- **🔍 Enhanced Headers Viewer:** Beautiful, organized display of HTTP headers with syntax highlighting and categorization.
+- **🍪 Smart Parser:** Automatically decode and display query parameters, cookies, and form data in a structured, readable format.
+- **🔔 Alert System:** Create custom alert rules based on status codes, response times, HTTP methods, URL patterns, and more.
+- **📧 Email Notifications:** Get notified via email when alerts trigger. Supports SMTP with beautiful HTML email templates.
+- **📊 Session Management:** Filter, search, tag, and organize captured HTTP sessions with MongoDB-backed persistence.
 
 ---
 
 ## 📸 Screenshots
 
 ### Dashboard Overview
-![Metrics](docs/screenshots/metrics.png)
+![Metrics](docs/public/metrics.png)
 
 ### In-Browser Capture Terminal
-![Capture Terminal](docs/screenshots/capture-terminal.png)
+![Capture Terminal](docs/public/capture-terminal.png)
 
 ### Session Viewer
-![Session Viewer](docs/screenshots/session-detail.png)
+![Session Viewer](docs/public/session-detail.png)
 
 ### Alert Rules
-![Session Viewer](docs/screenshots/alert-rules.png)
+![Session Viewer](docs/public/alert-rules.png)
 
 ---
 
@@ -163,26 +172,228 @@ Each major component has its own dedicated README with detailed setup and implem
 ---
 
 
-## API Examples
+## 📡 API Reference
 
-The Backend API is built with Elysia and exposes control endpoints via REST.
+The Backend API is built with Elysia and exposes comprehensive REST and WebSocket endpoints.
 
-### Capture Status & Control
+### Capture Control
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
 | `/api/v1/capture/status` | `GET` | Get current capture state (running, stopped, error) |
 | `/api/v1/capture/start` | `POST` | Start the C++ capture agent process |
 | `/api/v1/capture/stop` | `POST` | Stop the capture agent with graceful shutdown |
 | `/api/v1/capture/restart` | `POST` | Restart the capture agent |
+| `/api/v1/capture/stream` | `WebSocket` | Two-way terminal I/O stream |
 
-### Real-time Data Endpoints
+### Session Management
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/v1/sessions` | `GET` | Get all captured sessions |
+| `/api/v1/sessions/:id` | `GET` | Get session details by ID |
+| `/api/v1/sessions/:id` | `DELETE` | Delete a specific session |
+| `/api/v1/sessions/clear` | `DELETE` | Clear all sessions |
+| `/api/v1/sessions/filter` | `POST` | Filter sessions by criteria |
+
+### Alert Rules
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/v1/alerts` | `GET` | List all alert rules |
+| `/api/v1/alerts` | `POST` | Create new alert rule |
+| `/api/v1/alerts/:id` | `GET` | Get alert rule details |
+| `/api/v1/alerts/:id` | `PUT` | Update alert rule |
+| `/api/v1/alerts/:id` | `DELETE` | Delete alert rule |
+| `/api/v1/alerts/:id/toggle` | `PATCH` | Enable/disable alert rule |
+
+### Notifications
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/v1/notifications` | `GET` | List all notifications |
+| `/api/v1/notifications/:id/read` | `PATCH` | Mark notification as read |
+| `/api/v1/notifications/:id/dismiss` | `PATCH` | Dismiss notification |
+| `/api/v1/notifications/read-all` | `PATCH` | Mark all as read |
+
+### Real-time Updates
+| Endpoint | Type | Description |
+| :--- | :--- | :--- |
+| `/api/v1/realtime` | `WebSocket` | Real-time session updates |
+| `/api/v1/realtime/status` | `GET` | WebSocket connection status |
+
+### Examples
 
 ```bash
-# Get all session summaries
+# Get all sessions
 curl http://localhost:8000/api/v1/sessions
 
-# Get session details by ID
-curl http://localhost:8000/api/v1/sessions/:sessionId
+# Get session details
+curl http://localhost:8000/api/v1/sessions/SESSION_ID
 
-# WebSocket for Terminal I/O & Live Updates
-Connect to: ws://localhost:8000/api/v1/capture/stream
+# Create alert rule for 5xx errors
+curl -X POST http://localhost:8000/api/v1/alerts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Server Errors",
+    "severity": "error",
+    "conditions": [{
+      "type": "status_range",
+      "operator": "equals",
+      "value": "5xx"
+    }],
+    "cooldownMinutes": 5,
+    "enabled": true
+  }'
+
+# Get unread notifications
+curl http://localhost:8000/api/v1/notifications?status=unread
+```
+
+---
+
+## ⚙️ Configuration
+
+### Environment Variables
+
+Create a `.env` file in `services/backend-api/` with the following variables:
+
+```bash
+# Server Configuration
+PORT=8000
+
+# MongoDB Configuration
+MONGODB_URI=mongodb://localhost:27017/rewind
+
+# Data Directory (where capture agent saves JSON files)
+DATA_DIR=../capture-agent/output
+
+# Email Notification Configuration (Optional)
+EMAIL_ENABLED=true
+EMAIL_SMTP_HOST=smtp.gmail.com
+EMAIL_SMTP_PORT=587
+EMAIL_SMTP_SECURE=false
+EMAIL_SMTP_USER=your-email@gmail.com
+EMAIL_SMTP_PASS=your-app-password
+EMAIL_FROM=Rewind Alerts <noreply@rewind.local>
+EMAIL_RECIPIENT=admin@example.com
+EMAIL_RETRY_ATTEMPTS=3
+EMAIL_RETRY_DELAY=2000
+FRONTEND_URL=http://localhost:5173
+```
+
+### MongoDB Setup
+
+1. **Install MongoDB** (if not already installed):
+   ```bash
+   # macOS
+   brew install mongodb-community
+
+   # Ubuntu/Debian
+   sudo apt-get install mongodb
+
+   # Windows
+   # Download from: https://www.mongodb.com/try/download/community
+   ```
+
+2. **Start MongoDB**:
+   ```bash
+   # macOS/Linux
+   mongod --dbpath /path/to/data
+
+   # Windows
+   mongod --dbpath C:\data\db
+   ```
+
+3. **Verify Connection**:
+   ```bash
+   mongosh mongodb://localhost:27017/rewind
+   ```
+
+### Email Notifications Setup
+
+For detailed email configuration instructions, see [EMAIL_SETUP_GUIDE.md](docs/EMAIL_SETUP_GUIDE.md).
+
+**Quick Start with Gmail:**
+1. Enable 2-Factor Authentication on your Gmail account
+2. Generate an App Password at https://myaccount.google.com/apppasswords
+3. Update `.env` with your credentials:
+   ```bash
+   EMAIL_SMTP_USER=your-email@gmail.com
+   EMAIL_SMTP_PASS=generated-app-password
+   EMAIL_RECIPIENT=recipient@example.com
+   ```
+
+---
+
+## 📚 Documentation
+
+Full documentation is available in the `docs/` directory and can be viewed as a website:
+
+**View Documentation:**
+- 🌐 **[Documentation Website](https://sreekarnv.github.io/rewind/)** (GitHub Pages)
+- 📖 **[Browse on GitHub](docs/)** (Markdown files)
+
+**Documentation Sections:**
+- **[User Guide](docs/USER_GUIDE.md)** - Complete guide for using Rewind
+- **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Development setup and architecture
+- **[Email Setup Guide](docs/EMAIL_SETUP_GUIDE.md)** - Detailed email configuration
+- **[Alert System](docs/EMAIL_ALERT_SYSTEM_COMPLETE.md)** - Alert system documentation
+
+**Run Documentation Locally:**
+```bash
+cd docs
+bun install
+bun run dev
+# Visit http://localhost:5173
+```
+
+---
+
+## 🎯 Use Cases
+
+- **API Debugging:** Capture and analyze HTTP requests/responses in real-time
+- **Performance Monitoring:** Track response times, identify slow endpoints
+- **Security Analysis:** Monitor for suspicious patterns, unauthorized access
+- **Integration Testing:** Verify API behavior, inspect headers and payloads
+- **Error Tracking:** Get alerted when errors occur, debug with full context
+- **Traffic Analysis:** Understand application behavior, identify bottlenecks
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) for details on our development process and how to submit pull requests.
+
+**Quick Start:**
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+See the [Developer Guide](docs/DEVELOPER_GUIDE.md) for complete development setup instructions.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **PcapPlusPlus** - High-performance packet capture library
+- **Bun** - Fast all-in-one JavaScript runtime
+- **SvelteKit** - Modern web framework
+- **ElysiaJS** - Fast and friendly Bun web framework
+- **MongoDB** - Document database for session storage
+- **TailwindCSS** - Utility-first CSS framework
+
+---
+
+<div align="center">
+
+**Built with ❤️ by the Rewind Team**
+
+[Report Bug](https://github.com/sreekarnv/rewind/issues) · [Request Feature](https://github.com/sreekarnv/rewind/issues)
+
+</div
