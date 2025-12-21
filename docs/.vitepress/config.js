@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 export default defineConfig({
   title: 'Rewind',
   description: 'Real-time HTTP Traffic Analyzer Documentation',
+  base: '/rewind/',
 
   ignoreDeadLinks: [
     // Ignore localhost URLs (these are examples in the docs)
