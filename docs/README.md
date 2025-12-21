@@ -8,7 +8,6 @@ This directory contains the documentation for Rewind, built with [VitePress](htt
 - `USER_GUIDE.md` - Complete user guide
 - `DEVELOPER_GUIDE.md` - Development guide
 - `EMAIL_SETUP_GUIDE.md` - Email notification setup
-- `EMAIL_ALERT_SYSTEM_COMPLETE.md` - Alert system documentation
 - `screenshots/` - Documentation screenshots
 
 ## Development

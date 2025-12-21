@@ -334,7 +334,6 @@ Full documentation is available in the `docs/` directory and can be viewed as a 
 - **[User Guide](docs/USER_GUIDE.md)** - Complete guide for using Rewind
 - **[Developer Guide](docs/DEVELOPER_GUIDE.md)** - Development setup and architecture
 - **[Email Setup Guide](docs/EMAIL_SETUP_GUIDE.md)** - Detailed email configuration
-- **[Alert System](docs/EMAIL_ALERT_SYSTEM_COMPLETE.md)** - Alert system documentation
 
 **Run Documentation Locally:**
 ```bash

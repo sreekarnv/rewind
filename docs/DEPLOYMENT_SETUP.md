@@ -18,7 +18,6 @@ docs/
 ├── USER_GUIDE.md         # User guide
 ├── DEVELOPER_GUIDE.md    # Developer guide
 ├── EMAIL_SETUP_GUIDE.md  # Email setup guide
-├── EMAIL_ALERT_SYSTEM_COMPLETE.md  # Alert system docs
 ├── README.md             # Docs development guide
 └── package.json          # Dependencies
 ```

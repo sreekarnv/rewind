@@ -226,7 +226,6 @@ rewind/
 │   ├── USER_GUIDE.md
 │   ├── DEVELOPER_GUIDE.md (this file)
 │   ├── EMAIL_SETUP_GUIDE.md
-│   ├── EMAIL_ALERT_SYSTEM_COMPLETE.md
 │   └── screenshots/
 │
 ├── LICENSE

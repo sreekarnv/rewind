@@ -148,7 +148,6 @@ cd services/frontend && npm run dev
 - [User Guide](/USER_GUIDE) - Complete guide for using Rewind
 - [Developer Guide](/DEVELOPER_GUIDE) - Development setup and architecture
 - [Email Setup Guide](/EMAIL_SETUP_GUIDE) - Detailed email configuration
-- [Alert System](/EMAIL_ALERT_SYSTEM_COMPLETE) - Alert system documentation
 
 ## License
 
