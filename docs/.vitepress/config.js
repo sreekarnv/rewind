@@ -9,7 +9,7 @@ export default defineConfig({
   ignoreDeadLinks: [/^http:\/\/localhost/],
 
   themeConfig: {
-    logo: "/rewind/logo.svg",
+    logo: "/logo.svg",
 
     nav: [
       { text: "Home", link: "/" },
