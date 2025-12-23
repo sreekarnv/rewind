@@ -3,6 +3,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
     import { createQuery } from "@tanstack/svelte-query";
+    import { replaceState } from "$app/navigation";
     import { getRealtimeClient } from "$lib/realtime";
     import { sessionsQueries } from "$lib/queries";
     import CaptureControls from "$lib/components/CaptureControls.svelte";
@@ -67,7 +68,7 @@
             : window.location.pathname;
 
         if (window.location.search !== `?${params.toString()}`) {
-            window.history.replaceState({}, "", newUrl);
+            replaceState(newUrl, {});
         }
     });
 
