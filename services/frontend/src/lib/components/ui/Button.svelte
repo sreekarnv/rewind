@@ -56,6 +56,7 @@
 	<a
 		{...rest}
 		{href}
+		data-sveltekit-preload-data="hover"
 		class={cn(baseClasses, 'no-underline')}
 	>
 		{#if loading}

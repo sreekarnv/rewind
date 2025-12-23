@@ -3,9 +3,9 @@
     import { page } from "$app/state";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
 
-    $: currentPath = page.url.pathname;
+    const currentPath = $derived(page.url.pathname);
 
-    let apiConnected = false;
+    let apiConnected = $state(false);
     let checkInterval: ReturnType<typeof setInterval> | null = null;
 
     async function checkApiHealth() {
@@ -44,7 +44,7 @@
         <nav class="max-w-7xl mx-auto px-4 md:px-0">
             <div class="flex justify-between items-center h-16">
                 <div class="flex-shrink-0 flex items-center">
-                    <a href="/" class="flex items-center gap-2 group">
+                    <a href="/" data-sveltekit-preload-data="hover" class="flex items-center gap-2 group">
                         <div
                             class="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center group-hover:from-purple-600 group-hover:to-indigo-600 transition-all"
                         >
@@ -75,6 +75,7 @@
                 >
                     <a
                         href="/"
+                        data-sveltekit-preload-data="hover"
                         class="inline-flex items-center px-4 py-1 rounded-lg text-sm font-semibold transition-all duration-200 {currentPath ===
                             '/' || currentPath.startsWith('/sessions')
                             ? 'bg-gradient-to-r from-purple-500 to-indigo-500 text-white shadow-md'
@@ -97,6 +98,7 @@
                     </a>
                     <a
                         href="/stats"
+                        data-sveltekit-preload-data="hover"
                         class="inline-flex items-center px-4 py-1 rounded-lg text-sm font-semibold transition-all duration-200 {currentPath ===
                         '/stats'
                             ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md'
@@ -119,6 +121,7 @@
                     </a>
                     <a
                         href="/metrics"
+                        data-sveltekit-preload-data="hover"
                         class="inline-flex items-center px-4 py-1 rounded-lg text-sm font-semibold transition-all duration-200 {currentPath ===
                         '/metrics'
                             ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md'
@@ -141,6 +144,7 @@
                     </a>
                     <a
                         href="/alerts"
+                        data-sveltekit-preload-data="hover"
                         class="inline-flex items-center px-4 py-1 rounded-lg text-sm font-semibold transition-all duration-200 {currentPath ===
                         '/alerts'
                             ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
@@ -201,7 +205,9 @@
     </header>
 
     <main class="flex-1 w-full">
-        <slot />
+        {#key currentPath}
+            <slot />
+        {/key}
     </main>
 
     <footer
