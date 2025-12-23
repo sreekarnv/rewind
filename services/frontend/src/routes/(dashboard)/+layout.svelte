@@ -44,7 +44,11 @@
         <nav class="max-w-7xl mx-auto px-4 md:px-0">
             <div class="flex justify-between items-center h-16">
                 <div class="flex-shrink-0 flex items-center">
-                    <a href="/" data-sveltekit-preload-data="hover" class="flex items-center gap-2 group">
+                    <a
+                        href="/"
+                        data-sveltekit-preload-data="hover"
+                        class="flex items-center gap-2 group"
+                    >
                         <div
                             class="w-8 h-8 bg-gradient-to-r from-purple-500 to-indigo-500 rounded-lg flex items-center justify-center group-hover:from-purple-600 group-hover:to-indigo-600 transition-all"
                         >
