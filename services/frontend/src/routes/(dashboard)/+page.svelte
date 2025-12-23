@@ -4,6 +4,7 @@
     import { onMount, onDestroy } from "svelte";
     import { createQuery } from "@tanstack/svelte-query";
     import { replaceState } from "$app/navigation";
+    import { browser } from "$app/environment";
     import { getRealtimeClient } from "$lib/realtime";
     import { sessionsQueries } from "$lib/queries";
     import CaptureControls from "$lib/components/CaptureControls.svelte";
@@ -49,15 +50,19 @@
     let searchQuery = $state("");
     let selectedMethod = $state("");
     let selectedStatusRange = $state("");
+    let isMounted = $state(false);
 
     onMount(() => {
         const urlParams = new URLSearchParams(window.location.search);
         searchQuery = urlParams.get("search") || "";
         selectedMethod = urlParams.get("method") || "";
         selectedStatusRange = urlParams.get("status") || "";
+        isMounted = true;
     });
 
     $effect(() => {
+        if (!browser || !isMounted) return;
+
         const params = new URLSearchParams();
         if (searchQuery) params.set("search", searchQuery);
         if (selectedMethod) params.set("method", selectedMethod);
