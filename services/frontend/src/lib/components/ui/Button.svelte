@@ -43,13 +43,13 @@
 		lg: 'px-6 py-3 text-lg'
 	};
 
-	const baseClasses = cn(
+	const baseClasses = $derived(cn(
 		'inline-flex items-center justify-center gap-2 font-medium transition-all duration-200',
 		variant !== 'icon' && 'rounded-xl',
 		variant !== 'icon' && sizes[size],
 		variants[variant],
 		className
-	);
+	));
 </script>
 
 {#if href}
