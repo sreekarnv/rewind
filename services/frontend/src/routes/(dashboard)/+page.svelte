@@ -3,7 +3,7 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
     import { createQuery } from "@tanstack/svelte-query";
-    import { replaceState } from "$app/navigation";
+    import { replaceState, afterNavigate } from "$app/navigation";
     import { getRealtimeClient } from "$lib/realtime";
     import { sessionsQueries } from "$lib/queries";
     import CaptureControls from "$lib/components/CaptureControls.svelte";
@@ -49,15 +49,19 @@
     let searchQuery = $state("");
     let selectedMethod = $state("");
     let selectedStatusRange = $state("");
+    let routerReady = $state(false);
 
-    onMount(() => {
+    afterNavigate(() => {
         const urlParams = new URLSearchParams(window.location.search);
         searchQuery = urlParams.get("search") || "";
         selectedMethod = urlParams.get("method") || "";
         selectedStatusRange = urlParams.get("status") || "";
+        routerReady = true;
     });
 
     $effect(() => {
+        if (!routerReady) return;
+
         const params = new URLSearchParams();
         if (searchQuery) params.set("search", searchQuery);
         if (selectedMethod) params.set("method", selectedMethod);

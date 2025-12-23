@@ -2,6 +2,13 @@
     import { onMount, onDestroy } from "svelte";
     import { page } from "$app/state";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
+    import type { Snippet } from "svelte";
+
+    interface Props {
+        children: Snippet;
+    }
+
+    let { children }: Props = $props();
 
     const currentPath = $derived(page.url.pathname);
 
@@ -210,7 +217,7 @@
 
     <main class="flex-1 w-full">
         {#key currentPath}
-            <slot />
+            {@render children()}
         {/key}
     </main>
 
