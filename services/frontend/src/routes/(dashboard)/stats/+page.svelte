@@ -4,6 +4,7 @@
     import { createQuery } from "@tanstack/svelte-query";
     import { statsQueries } from "$lib/queries";
     import LiveMetrics from "$lib/components/LiveMetrics.svelte";
+    import { LoadingState, ErrorState, Badge } from "$lib/components/ui";
 
     const query = createQuery(() => statsQueries.all());
 
@@ -51,90 +52,16 @@
         </div>
 
         {#if isPending}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
-            >
-                <div class="text-center">
-                    <div
-                        class="mx-auto w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mb-4"
-                    >
-                        <svg
-                            class="w-8 h-8 text-green-600 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                        Loading Statistics
-                    </h3>
-                    <p class="text-gray-600">Fetching traffic statistics...</p>
-                </div>
-            </div>
+            <LoadingState
+                title="Loading Statistics"
+                description="Fetching traffic statistics..."
+            />
         {:else if isError}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-red-200 p-6"
-            >
-                <div class="flex items-start gap-4">
-                    <div class="flex-shrink-0">
-                        <div class="p-2 bg-red-100 rounded-lg">
-                            <svg
-                                class="w-6 h-6 text-red-600"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
-                            Error Loading Statistics
-                        </h3>
-                        <p class="text-gray-600 mb-4">
-                            {error?.message || "Failed to load statistics"}
-                        </p>
-                        <button
-                            onclick={() => query.refetch()}
-                            class="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 transition-all font-semibold shadow-md flex items-center gap-2"
-                        >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                            </svg>
-                            Retry
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <ErrorState
+                title="Error Loading Statistics"
+                message={error?.message || "Failed to load statistics"}
+                onRetry={() => query.refetch()}
+            />
         {:else if stats}
             <LiveMetrics initialStats={stats} />
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -478,17 +405,18 @@
                                         <td
                                             class="px-6 py-4 text-sm font-semibold"
                                         >
-                                            <span
-                                                class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium {isSuccess
-                                                    ? 'bg-green-100 text-green-800'
+                                            <Badge
+                                                variant={isSuccess
+                                                    ? "success"
                                                     : isRedirect
-                                                      ? 'bg-blue-100 text-blue-800'
+                                                      ? "info"
                                                       : isClientError
-                                                        ? 'bg-yellow-100 text-yellow-800'
-                                                        : 'bg-red-100 text-red-800'}"
+                                                        ? "warning"
+                                                        : "error"}
+                                                size="xs"
                                             >
                                                 {status}
-                                            </span>
+                                            </Badge>
                                         </td>
                                         <td
                                             class="px-6 py-4 text-sm text-gray-600 text-right font-medium"

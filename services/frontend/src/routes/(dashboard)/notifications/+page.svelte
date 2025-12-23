@@ -9,6 +9,24 @@
     import { notificationQueries } from "$lib/queries";
     import { client } from "$lib/client";
     import type { AlertSeverity, NotificationStatus } from "$lib/types";
+    import {
+        Button,
+        Badge,
+        Card,
+        LoadingState,
+        ErrorState,
+        EmptyState,
+    } from "$lib/components/ui";
+    import {
+        CircleAlert,
+        TriangleAlert,
+        Info,
+        Mail,
+        CircleCheck,
+        Eye,
+        X as CloseX,
+        Bell,
+    } from "lucide-svelte";
 
     const queryClient = useQueryClient();
 
@@ -63,18 +81,32 @@
         },
     }));
 
-    function getSeverityColor(severity: AlertSeverity): string {
+    function getSeverityVariant(
+        severity: AlertSeverity,
+    ): "error" | "warning" | "info" | "default" {
         switch (severity) {
             case "critical":
-                return "bg-red-100 text-red-800 border-red-200";
             case "error":
-                return "bg-orange-100 text-orange-800 border-orange-200";
+                return "error";
             case "warning":
-                return "bg-yellow-100 text-yellow-800 border-yellow-200";
+                return "warning";
             case "info":
-                return "bg-blue-100 text-blue-800 border-blue-200";
+                return "info";
             default:
-                return "bg-gray-100 text-gray-800 border-gray-200";
+                return "default";
+        }
+    }
+
+    function getSeverityIcon(severity: AlertSeverity) {
+        switch (severity) {
+            case "critical":
+            case "error":
+                return CircleAlert;
+            case "warning":
+                return TriangleAlert;
+            case "info":
+            default:
+                return Info;
         }
     }
 
@@ -122,312 +154,212 @@
                 </p>
             </div>
             {#if unreadCount > 0}
-                <button
-                    onclick={() => markAllAsReadMutation.mutate()}
-                    class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all shadow-md font-medium"
-                >
+                <Button onclick={() => markAllAsReadMutation.mutate()}>
+                    <CheckCircle2 class="w-5 h-5" />
                     Mark All as Read
-                </button>
+                </Button>
             {/if}
         </div>
 
         <div class="flex gap-2">
-            <button
+            <Button
+                variant={statusFilter === undefined ? "primary" : "secondary"}
                 onclick={() => setFilter(undefined)}
-                class="px-4 py-2 rounded-lg font-medium transition-all {statusFilter ===
-                undefined
-                    ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}"
             >
                 All ({total})
-            </button>
-            <button
+            </Button>
+            <Button
+                variant={statusFilter === "unread" ? "primary" : "secondary"}
                 onclick={() => setFilter("unread")}
-                class="px-4 py-2 rounded-lg font-medium transition-all {statusFilter ===
-                'unread'
-                    ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}"
             >
                 Unread ({unreadCount})
-            </button>
-            <button
+            </Button>
+            <Button
+                variant={statusFilter === "read" ? "primary" : "secondary"}
                 onclick={() => setFilter("read")}
-                class="px-4 py-2 rounded-lg font-medium transition-all {statusFilter ===
-                'read'
-                    ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}"
             >
                 Read
-            </button>
-            <button
+            </Button>
+            <Button
+                variant={statusFilter === "dismissed" ? "primary" : "secondary"}
                 onclick={() => setFilter("dismissed")}
-                class="px-4 py-2 rounded-lg font-medium transition-all {statusFilter ===
-                'dismissed'
-                    ? 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'}"
             >
                 Dismissed
-            </button>
+            </Button>
         </div>
     </div>
 
     {#if notificationsQuery.isLoading}
-        <div class="flex items-center justify-center py-12">
-            <div
-                class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"
-            ></div>
-        </div>
+        <LoadingState
+            title="Loading Notifications"
+            description="Fetching your alerts and updates..."
+        />
     {:else if notificationsQuery.isError}
-        <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-            <p class="text-red-700">
-                Failed to load notifications. Please try again.
-            </p>
-        </div>
+        <ErrorState
+            title="Error Loading Notifications"
+            message="Failed to load notifications. Please try again."
+        />
     {:else if notifications.length === 0}
-        <div
-            class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100 text-center"
-        >
-            <svg
-                class="mx-auto h-16 w-16 text-gray-400 mb-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-            >
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-            </svg>
-            <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                No {statusFilter ? statusFilter : ""} notifications
-            </h3>
-            <p class="text-gray-600">You're all caught up!</p>
-        </div>
+        <EmptyState
+            title="No {statusFilter ? statusFilter : ''} notifications"
+            description="You're all caught up!"
+            icon={Bell}
+        />
     {:else}
         <div class="space-y-3">
             {#each notifications as notification (notification._id)}
-                <div
-                    class="bg-white/80 backdrop-blur-sm rounded-xl shadow border {notification.status ===
-                    'unread'
+                {@const SeverityIcon = getSeverityIcon(notification.severity)}
+                <Card
+                    hoverable
+                    class="p-5 {notification.status === 'unread'
                         ? 'border-purple-200 bg-purple-50/30'
-                        : 'border-gray-200'} overflow-hidden hover:shadow-lg transition-all"
+                        : ''}"
                 >
-                    <div class="p-5">
-                        <div class="flex items-start gap-4">
-                            <div class="flex-shrink-0 mt-1">
-                                {#if notification.severity === "critical"}
-                                    <div
-                                        class="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center"
-                                    >
-                                        <svg
-                                            class="w-6 h-6 text-red-600"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                    </div>
-                                {:else if notification.severity === "error"}
-                                    <div
-                                        class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center"
-                                    >
-                                        <svg
-                                            class="w-6 h-6 text-orange-600"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                    </div>
-                                {:else if notification.severity === "warning"}
-                                    <div
-                                        class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center"
-                                    >
-                                        <svg
-                                            class="w-6 h-6 text-yellow-600"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                    </div>
-                                {:else}
-                                    <div
-                                        class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"
-                                    >
-                                        <svg
-                                            class="w-6 h-6 text-blue-600"
-                                            fill="currentColor"
-                                            viewBox="0 0 20 20"
-                                        >
-                                            <path
-                                                fill-rule="evenodd"
-                                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                                clip-rule="evenodd"
-                                            />
-                                        </svg>
-                                    </div>
-                                {/if}
-                            </div>
-
-                            <div class="flex-1 min-w-0">
-                                <div
-                                    class="flex items-start justify-between gap-3 mb-2"
-                                >
-                                    <div class="flex-1">
-                                        <div
-                                            class="flex items-center gap-2 mb-1 flex-wrap"
-                                        >
-                                            <h3
-                                                class="text-lg font-semibold text-gray-900"
-                                            >
-                                                {notification.ruleName}
-                                            </h3>
-                                            <span
-                                                class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {getSeverityColor(
-                                                    notification.severity,
-                                                )} border"
-                                            >
-                                                {notification.severity.toUpperCase()}
-                                            </span>
-                                            {#if notification.status === "unread"}
-                                                <span
-                                                    class="w-2 h-2 bg-purple-500 rounded-full"
-                                                ></span>
-                                            {/if}
-                                            <!-- Email Status Badge -->
-                                            {#if notification.emailSent}
-                                                <span
-                                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 border border-green-300"
-                                                    title="Email sent at {notification.emailSentAt
-                                                        ? new Date(
-                                                              notification.emailSentAt,
-                                                          ).toLocaleString()
-                                                        : 'unknown time'}"
-                                                >
-                                                    <svg
-                                                        class="w-3 h-3"
-                                                        fill="currentColor"
-                                                        viewBox="0 0 20 20"
-                                                    >
-                                                        <path
-                                                            d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"
-                                                        />
-                                                        <path
-                                                            d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"
-                                                        />
-                                                    </svg>
-                                                    Sent
-                                                </span>
-                                            {:else if notification.emailAttempts && notification.emailAttempts > 0}
-                                                <span
-                                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-300"
-                                                    title={notification.emailError ||
-                                                        "Email delivery failed"}
-                                                >
-                                                    <svg
-                                                        class="w-3 h-3"
-                                                        fill="currentColor"
-                                                        viewBox="0 0 20 20"
-                                                    >
-                                                        <path
-                                                            d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"
-                                                        />
-                                                        <path
-                                                            d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"
-                                                        />
-                                                    </svg>
-                                                    Failed
-                                                </span>
-                                            {/if}
-                                        </div>
-                                        <p class="text-gray-700 mb-2">
-                                            {notification.message}
-                                        </p>
-                                        <div
-                                            class="flex items-center gap-3 text-sm text-gray-600"
-                                        >
-                                            <span
-                                                class="font-mono font-semibold"
-                                                >{notification.sessionData
-                                                    .method}</span
-                                            >
-                                            <span>•</span>
-                                            <span class="truncate max-w-md"
-                                                >{notification.sessionData
-                                                    .uri}</span
-                                            >
-                                            {#if notification.sessionData.statusCode}
-                                                <span>•</span>
-                                                <span
-                                                    >Status: {notification
-                                                        .sessionData
-                                                        .statusCode}</span
-                                                >
-                                            {/if}
-                                        </div>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            {formatTimestamp(
-                                                notification.createdAt,
-                                            )}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Actions -->
-                            <div class="flex flex-col gap-2">
-                                <button
-                                    onclick={() =>
-                                        handleViewSession(
-                                            notification.sessionId,
-                                            notification._id,
-                                            notification.status,
-                                        )}
-                                    class="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors text-sm font-medium whitespace-nowrap"
-                                >
-                                    View Session
-                                </button>
-                                {#if notification.status === "unread"}
-                                    <button
-                                        onclick={() =>
-                                            markAsReadMutation.mutate(
-                                                notification._id,
-                                            )}
-                                        class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium whitespace-nowrap"
-                                    >
-                                        Mark Read
-                                    </button>
-                                {/if}
-                                {#if notification.status !== "dismissed"}
-                                    <button
-                                        onclick={() =>
-                                            markAsDismissedMutation.mutate(
-                                                notification._id,
-                                            )}
-                                        class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium whitespace-nowrap"
-                                    >
-                                        Dismiss
-                                    </button>
-                                {/if}
+                    <div class="flex items-start gap-4">
+                        <div class="flex-shrink-0 mt-1">
+                            <div
+                                class="w-10 h-10 rounded-full flex items-center justify-center {notification.severity ===
+                                    'critical' ||
+                                notification.severity === 'error'
+                                    ? 'bg-red-100'
+                                    : notification.severity === 'warning'
+                                      ? 'bg-yellow-100'
+                                      : 'bg-blue-100'}"
+                            >
+                                <SeverityIcon
+                                    class="w-6 h-6 {notification.severity ===
+                                        'critical' ||
+                                    notification.severity === 'error'
+                                        ? 'text-red-600'
+                                        : notification.severity === 'warning'
+                                          ? 'text-yellow-600'
+                                          : 'text-blue-600'}"
+                                />
                             </div>
                         </div>
+
+                        <div class="flex-1 min-w-0">
+                            <div
+                                class="flex items-start justify-between gap-3 mb-2"
+                            >
+                                <div class="flex-1">
+                                    <div
+                                        class="flex items-center gap-2 mb-1 flex-wrap"
+                                    >
+                                        <h3
+                                            class="text-lg font-semibold text-gray-900"
+                                        >
+                                            {notification.ruleName}
+                                        </h3>
+                                        <Badge
+                                            variant={getSeverityVariant(
+                                                notification.severity,
+                                            )}
+                                            size="xs"
+                                        >
+                                            {notification.severity.toUpperCase()}
+                                        </Badge>
+                                        {#if notification.status === "unread"}
+                                            <span
+                                                class="w-2 h-2 bg-purple-500 rounded-full"
+                                            ></span>
+                                        {/if}
+                                        {#if notification.emailSent}
+                                            <Badge
+                                                variant="success"
+                                                size="xs"
+                                                class="inline-flex items-center gap-1"
+                                            >
+                                                <Mail class="w-3 h-3" />
+                                                Sent
+                                            </Badge>
+                                        {:else if notification.emailAttempts && notification.emailAttempts > 0}
+                                            <Badge
+                                                variant="error"
+                                                size="xs"
+                                                class="inline-flex items-center gap-1"
+                                            >
+                                                <Mail class="w-3 h-3" />
+                                                Failed
+                                            </Badge>
+                                        {/if}
+                                    </div>
+                                    <p class="text-gray-700 mb-2">
+                                        {notification.message}
+                                    </p>
+                                    <div
+                                        class="flex items-center gap-3 text-sm text-gray-600"
+                                    >
+                                        <span class="font-mono font-semibold"
+                                            >{notification.sessionData
+                                                .method}</span
+                                        >
+                                        <span>•</span>
+                                        <span class="truncate max-w-md"
+                                            >{notification.sessionData
+                                                .uri}</span
+                                        >
+                                        {#if notification.sessionData.statusCode}
+                                            <span>•</span>
+                                            <span
+                                                >Status: {notification
+                                                    .sessionData
+                                                    .statusCode}</span
+                                            >
+                                        {/if}
+                                    </div>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        {formatTimestamp(
+                                            notification.createdAt,
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                onclick={() =>
+                                    handleViewSession(
+                                        notification.sessionId,
+                                        notification._id,
+                                        notification.status,
+                                    )}
+                            >
+                                <Eye class="w-4 h-4" />
+                                View
+                            </Button>
+                            {#if notification.status === "unread"}
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onclick={() =>
+                                        markAsReadMutation.mutate(
+                                            notification._id,
+                                        )}
+                                >
+                                    <CircleCheck class="w-4 h-4" />
+                                    Read
+                                </Button>
+                            {/if}
+                            {#if notification.status !== "dismissed"}
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onclick={() =>
+                                        markAsDismissedMutation.mutate(
+                                            notification._id,
+                                        )}
+                                >
+                                    <CloseX class="w-4 h-4" />
+                                    Dismiss
+                                </Button>
+                            {/if}
+                        </div>
                     </div>
-                </div>
+                </Card>
             {/each}
         </div>
     {/if}

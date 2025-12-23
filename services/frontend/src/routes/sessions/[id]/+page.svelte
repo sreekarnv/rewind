@@ -8,6 +8,22 @@
     import RequestReplay from "$lib/components/RequestReplay.svelte";
     import EnhancedHeadersViewer from "$lib/components/EnhancedHeadersViewer.svelte";
     import QueryParamsAndCookies from "$lib/components/QueryParamsAndCookies.svelte";
+    import {
+        Button,
+        Badge,
+        Card,
+        LoadingState,
+        ErrorState,
+    } from "$lib/components/ui";
+    import {
+        ArrowLeft,
+        RefreshCw,
+        FileText,
+        Tag,
+        ArrowRight,
+        Clock,
+        TriangleAlert,
+    } from "lucide-svelte";
 
     const query = createQuery(() => sessionsQueries.detail(page.params.id!));
     const session = $derived(query.data?.session);
@@ -44,177 +60,71 @@
 >
     <div class="max-w-7xl mx-auto space-y-6">
         <div class="flex items-center justify-between">
-            <a
-                href="/"
-                class="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-gray-700 hover:text-indigo-600 border border-gray-100 hover:border-indigo-200"
-            >
-                <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M15 19l-7-7 7-7"
-                    />
-                </svg>
-                <span class="font-medium">Back to Sessions</span>
-            </a>
+            <Button variant="secondary" href="/">
+                <ArrowLeft class="w-5 h-5" />
+                Back to Sessions
+            </Button>
 
             {#if query.isSuccess && session}
-                <button
-                    onclick={() => (showReplayModal = true)}
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all duration-300 shadow-md hover:shadow-lg font-medium"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                        />
-                    </svg>
+                <Button onclick={() => (showReplayModal = true)}>
+                    <RefreshCw class="w-5 h-5" />
                     Replay Request
-                </button>
+                </Button>
             {/if}
         </div>
 
         {#if query.isPending}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
-            >
-                <div class="text-center">
-                    <div
-                        class="mx-auto w-16 h-16 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center mb-4"
-                    >
-                        <svg
-                            class="w-8 h-8 text-indigo-600 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                        Loading Session
-                    </h3>
-                    <p class="text-gray-600">Fetching session details...</p>
-                </div>
-            </div>
+            <LoadingState
+                title="Loading Session"
+                description="Fetching session details..."
+            />
         {:else if query.isError}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-red-200 p-6"
-            >
-                <div class="flex items-start gap-4">
-                    <div class="flex-shrink-0">
-                        <div class="p-2 bg-red-100 rounded-lg">
-                            <svg
-                                class="w-6 h-6 text-red-600"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
-                            Session Not Found
-                        </h3>
-                        <p class="text-gray-600 mb-4">
-                            {query.error?.message ||
-                                "The requested session could not be found."}
-                        </p>
-                        <button
-                            onclick={() => query.refetch()}
-                            class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:from-indigo-600 hover:to-purple-600 transition-all font-semibold shadow-md flex items-center gap-2"
-                        >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                            </svg>
-                            Retry
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <ErrorState
+                title="Session Not Found"
+                message={query.error?.message ||
+                    "The requested session could not be found."}
+                onRetry={() => query.refetch()}
+            />
         {:else if query.isSuccess && session}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <Card class="p-6">
                 <div class="flex items-start justify-between mb-4">
                     <div class="flex items-center gap-3 flex-wrap">
-                        <span
-                            class="inline-flex items-center px-4 py-2 rounded-xl text-base font-semibold bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-md"
-                        >
+                        <Badge variant="purple" size="lg" class="font-semibold">
                             {session.request.method}
-                        </span>
+                        </Badge>
                         {#if session.response}
                             {@const status = session.response.statusCode}
                             {@const isSuccess = status >= 200 && status < 300}
                             {@const isRedirect = status >= 300 && status < 400}
                             {@const isClientError =
                                 status >= 400 && status < 500}
-                            <span
-                                class="inline-flex items-center px-4 py-2 rounded-xl text-base font-semibold {isSuccess
-                                    ? 'bg-gradient-to-r from-green-500 to-green-600'
+                            <Badge
+                                variant={isSuccess
+                                    ? "success"
                                     : isRedirect
-                                      ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                      ? "info"
                                       : isClientError
-                                        ? 'bg-gradient-to-r from-yellow-500 to-yellow-600'
-                                        : 'bg-gradient-to-r from-red-500 to-red-600'} text-white shadow-md"
+                                        ? "warning"
+                                        : "error"}
+                                size="lg"
+                                class="font-semibold"
                             >
                                 {session.response.statusCode}
                                 {session.response.statusMessage}
-                            </span>
+                            </Badge>
                         {:else}
-                            <span
-                                class="inline-flex items-center px-4 py-2 rounded-xl text-base font-semibold bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-md"
+                            <Badge
+                                variant="default"
+                                size="lg"
+                                class="font-semibold"
                             >
                                 No Response
-                            </span>
+                            </Badge>
                         {/if}
                     </div>
-                    <span
-                        class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-lg font-mono"
-                    >
+                    <Badge variant="default" size="sm" class="font-mono">
                         Session ID: {session.sessionId.split("-")[0]}...
-                    </span>
+                    </Badge>
                 </div>
 
                 <h1
@@ -230,19 +140,7 @@
                         <p
                             class="text-sm text-blue-600 font-medium mb-1 flex items-center gap-1"
                         >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M7 16l-4-4m0 0l4-4m-4 4h18"
-                                />
-                            </svg>
+                            <ArrowLeft class="w-4 h-4" />
                             Source
                         </p>
                         <p
@@ -257,19 +155,7 @@
                         <p
                             class="text-sm text-purple-600 font-medium mb-1 flex items-center gap-1"
                         >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M17 8l4 4m0 0l-4 4m4-4H3"
-                                />
-                            </svg>
+                            <ArrowRight class="w-4 h-4" />
                             Destination
                         </p>
                         <p
@@ -284,19 +170,7 @@
                         <p
                             class="text-sm text-indigo-600 font-medium mb-1 flex items-center gap-1"
                         >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
+                            <Clock class="w-4 h-4" />
                             Timestamp
                         </p>
                         <p class="text-sm text-gray-900 font-semibold">
@@ -304,26 +178,12 @@
                         </p>
                     </div>
                 </div>
-            </div>
+            </Card>
 
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <Card class="p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="p-2 bg-indigo-100 rounded-lg">
-                        <svg
-                            class="w-6 h-6 text-indigo-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                        </svg>
+                        <FileText class="w-6 h-6 text-indigo-600" />
                     </div>
                     <h2 class="text-2xl font-semibold text-gray-900">
                         HTTP Headers
@@ -336,27 +196,12 @@
                     url={session.request.uri}
                     statusCode={session.response?.statusCode}
                 />
-            </div>
+            </Card>
 
-            <!-- Query Parameters & Cookies -->
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
-            >
+            <Card class="p-6">
                 <div class="flex items-center gap-3 mb-6">
                     <div class="p-2 bg-cyan-100 rounded-lg">
-                        <svg
-                            class="w-6 h-6 text-cyan-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                            />
-                        </svg>
+                        <Tag class="w-6 h-6 text-cyan-600" />
                     </div>
                     <h2 class="text-2xl font-semibold text-gray-900">
                         Parameters & Cookies
@@ -367,7 +212,7 @@
                     requestHeaders={session.request.headers}
                     responseHeaders={session.response?.headers}
                 />
-            </div>
+            </Card>
 
             {#if session.request.body}
                 <FormattedBody
@@ -386,25 +231,13 @@
                     />
                 {/if}
             {:else}
-                <div
-                    class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-yellow-200"
-                >
+                <Card variant="warning" class="p-6">
                     <div class="flex items-start gap-4">
                         <div class="flex-shrink-0">
                             <div class="p-2 bg-yellow-100 rounded-lg">
-                                <svg
+                                <TriangleAlert
                                     class="w-6 h-6 text-yellow-600"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                                    />
-                                </svg>
+                                />
                             </div>
                         </div>
                         <div>
@@ -417,7 +250,7 @@
                             </p>
                         </div>
                     </div>
-                </div>
+                </Card>
             {/if}
         {/if}
     </div>
