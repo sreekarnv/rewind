@@ -62,7 +62,7 @@ const NotificationSchema = new Schema<INotification>(
   {
     timestamps: true,
     collection: "notifications",
-  }
+  },
 );
 
 NotificationSchema.index({ status: 1, createdAt: -1 });
@@ -71,4 +71,7 @@ NotificationSchema.index({ ruleId: 1 });
 NotificationSchema.index({ createdAt: -1 });
 NotificationSchema.index({ emailSent: 1, createdAt: -1 });
 
-export const Notification = mongoose.model<INotification>("Notification", NotificationSchema);
+export const Notification = mongoose.model<INotification>(
+  "Notification",
+  NotificationSchema,
+);

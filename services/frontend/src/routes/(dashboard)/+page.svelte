@@ -9,6 +9,28 @@
     import type { SessionSummary, Session } from "$lib/types";
     import { exportFullSessions } from "$lib/export";
     import { client } from "$lib/client";
+    import {
+        Button,
+        Badge,
+        Card,
+        Input,
+        Select,
+        LoadingState,
+        EmptyState,
+        ErrorState,
+        Modal,
+    } from "$lib/components/ui";
+    import {
+        Search,
+        X as CloseX,
+        Download,
+        ChevronDown,
+        ChevronRight,
+        ArrowRight,
+        ArrowLeft,
+        Clock,
+        FileText,
+    } from "lucide-svelte";
 
     const query = createQuery(() => sessionsQueries.all());
 
@@ -197,6 +219,46 @@
         filteredSessions.filter((s) => s.statusCode && s.statusCode < 400)
             .length,
     );
+
+    const statusOptions = [
+        { value: "", label: "All Status Codes" },
+        { value: "2xx", label: "2xx - Success" },
+        { value: "3xx", label: "3xx - Redirect" },
+        { value: "4xx", label: "4xx - Client Error" },
+        { value: "5xx", label: "5xx - Server Error" },
+        { value: "no-response", label: "No Response" },
+    ];
+
+    const methodOptions = $derived([
+        { value: "", label: "All Methods" },
+        ...availableMethods.map((m) => ({ value: m, label: m })),
+    ]);
+
+    function getStatusVariant(
+        statusCode: number | undefined,
+    ): "success" | "warning" | "error" | "default" {
+        if (!statusCode) return "default";
+        if (statusCode < 300) return "success";
+        if (statusCode < 400) return "warning";
+        return "error";
+    }
+
+    function getStatusLabel(range: string): string {
+        switch (range) {
+            case "2xx":
+                return "2xx - Success";
+            case "3xx":
+                return "3xx - Redirect";
+            case "4xx":
+                return "4xx - Client Error";
+            case "5xx":
+                return "5xx - Server Error";
+            case "no-response":
+                return "No Response";
+            default:
+                return "";
+        }
+    }
 </script>
 
 <svelte:head>
@@ -209,9 +271,7 @@
     <div class="max-w-7xl mx-auto space-y-6">
         <CaptureControls />
 
-        <div
-            class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100"
-        >
+        <Card>
             <div class="flex justify-between items-start">
                 <div class="flex-1">
                     <div class="flex items-center gap-3 mb-2">
@@ -221,28 +281,9 @@
                             HTTP Sessions
                         </h1>
                         {#if isConnected}
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 border border-green-200"
-                            >
-                                <span class="relative flex h-3 w-3 mr-2">
-                                    <span
-                                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"
-                                    ></span>
-                                    <span
-                                        class="relative inline-flex rounded-full h-3 w-3 bg-green-500"
-                                    ></span>
-                                </span>
-                                Live Updates
-                            </span>
+                            <Badge variant="success" pulse>Live Updates</Badge>
                         {:else}
-                            <span
-                                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200"
-                            >
-                                <span
-                                    class="w-2 h-2 bg-gray-400 rounded-full mr-2"
-                                ></span>
-                                Offline
-                            </span>
+                            <Badge variant="default">Offline</Badge>
                         {/if}
                     </div>
                     <p class="text-gray-600">
@@ -253,19 +294,7 @@
                         <p
                             class="mt-2 text-sm text-gray-500 flex items-center gap-2"
                         >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
+                            <Clock class="w-4 h-4" />
                             Last update: {new Date(
                                 lastUpdate,
                             ).toLocaleTimeString()}
@@ -306,45 +335,20 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </Card>
 
         {#if !isPending && filteredSessions.length > 0}
             <div class="flex justify-end">
                 <div class="relative export-menu-container">
-                    <button
-                        onclick={() => (showExportMenu = !showExportMenu)}
-                        class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:from-indigo-600 hover:to-purple-600 transition-all font-semibold shadow-md flex items-center gap-2"
-                    >
-                        <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                            />
-                        </svg>
+                    <Button onclick={() => (showExportMenu = !showExportMenu)}>
+                        <Download class="w-5 h-5" />
                         Export Sessions
-                        <svg
+                        <ChevronDown
                             class="w-4 h-4 transition-transform {showExportMenu
                                 ? 'rotate-180'
                                 : ''}"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 9l-7 7-7-7"
-                            />
-                        </svg>
-                    </button>
+                        />
+                    </Button>
 
                     {#if showExportMenu}
                         <div
@@ -363,19 +367,9 @@
                                     onclick={() => handleExport("har")}
                                     class="w-full text-left px-3 py-2 rounded-lg hover:bg-purple-50 transition-colors flex items-start gap-3 group"
                                 >
-                                    <svg
+                                    <FileText
                                         class="w-5 h-5 text-purple-600 mt-0.5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                                        />
-                                    </svg>
+                                    />
                                     <div>
                                         <div
                                             class="font-semibold text-gray-900 group-hover:text-purple-700"
@@ -391,19 +385,9 @@
                                     onclick={() => handleExport("json")}
                                     class="w-full text-left px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors flex items-start gap-3 group"
                                 >
-                                    <svg
+                                    <FileText
                                         class="w-5 h-5 text-blue-600 mt-0.5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-                                        />
-                                    </svg>
+                                    />
                                     <div>
                                         <div
                                             class="font-semibold text-gray-900 group-hover:text-blue-700"
@@ -419,19 +403,9 @@
                                     onclick={() => handleExport("csv")}
                                     class="w-full text-left px-3 py-2 rounded-lg hover:bg-green-50 transition-colors flex items-start gap-3 group"
                                 >
-                                    <svg
+                                    <FileText
                                         class="w-5 h-5 text-green-600 mt-0.5"
-                                        fill="none"
-                                        viewBox="0 0 24 24"
-                                        stroke="currentColor"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                                        />
-                                    </svg>
+                                    />
                                     <div>
                                         <div
                                             class="font-semibold text-gray-900 group-hover:text-green-700"
@@ -450,294 +424,86 @@
             </div>
         {/if}
 
-        <div
-            class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-6 border border-gray-100 space-y-4"
-        >
+        <Card class="space-y-4">
             <div class="flex items-center gap-2">
-                <div class="flex-1 relative">
-                    <div
-                        class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none"
-                    >
-                        <svg
-                            class="w-5 h-5 text-gray-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
-                    </div>
-                    <input
-                        type="text"
-                        bind:value={searchQuery}
-                        placeholder="Search by URL, method, status code, or IP address..."
-                        class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all bg-white"
-                    />
-                </div>
+                <Input
+                    bind:value={searchQuery}
+                    placeholder="Search by URL, method, status code, or IP address..."
+                    icon={Search}
+                    class="flex-1"
+                />
                 {#if hasActiveFilters}
-                    <button
-                        onclick={clearFilters}
-                        class="px-4 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all font-semibold shadow-md flex items-center gap-2 whitespace-nowrap"
-                    >
-                        <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
+                    <Button variant="secondary" onclick={clearFilters}>
+                        <CloseX class="w-4 h-4" />
                         Clear Filters
-                    </button>
+                    </Button>
                 {/if}
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
                 <span class="text-sm font-medium text-gray-700">Filters:</span>
-                <div class="relative">
-                    <select
-                        bind:value={selectedMethod}
-                        class="appearance-none pl-4 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all bg-white text-sm font-medium cursor-pointer"
-                    >
-                        <option value="">All Methods</option>
-                        {#each availableMethods as method}
-                            <option value={method}>{method}</option>
-                        {/each}
-                    </select>
-                    <div
-                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
-                    >
-                        <svg
-                            class="w-4 h-4 text-gray-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 9l-7 7-7-7"
-                            />
-                        </svg>
-                    </div>
-                </div>
-
-                <div class="relative">
-                    <select
-                        bind:value={selectedStatusRange}
-                        class="appearance-none pl-4 pr-10 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all bg-white text-sm font-medium cursor-pointer"
-                    >
-                        <option value="">All Status Codes</option>
-                        <option value="2xx">2xx - Success</option>
-                        <option value="3xx">3xx - Redirect</option>
-                        <option value="4xx">4xx - Client Error</option>
-                        <option value="5xx">5xx - Server Error</option>
-                        <option value="no-response">No Response</option>
-                    </select>
-                    <div
-                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
-                    >
-                        <svg
-                            class="w-4 h-4 text-gray-400"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M19 9l-7 7-7-7"
-                            />
-                        </svg>
-                    </div>
-                </div>
+                <Select
+                    bind:value={selectedMethod}
+                    options={methodOptions}
+                    class="w-48"
+                />
+                <Select
+                    bind:value={selectedStatusRange}
+                    options={statusOptions}
+                    class="w-56"
+                />
 
                 {#if searchQuery}
-                    <span
-                        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-purple-100 text-purple-700 border border-purple-200 text-sm font-medium"
-                    >
-                        <svg
-                            class="w-4 h-4"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                            />
-                        </svg>
+                    <Badge variant="purple">
+                        <Search class="w-4 h-4" />
                         Search: "{searchQuery}"
-                    </span>
+                    </Badge>
                 {/if}
                 {#if selectedMethod}
-                    <span
-                        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 text-sm font-medium"
-                    >
-                        Method: {selectedMethod}
-                    </span>
+                    <Badge variant="info">Method: {selectedMethod}</Badge>
                 {/if}
                 {#if selectedStatusRange}
-                    <span
-                        class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-green-100 text-green-700 border border-green-200 text-sm font-medium"
+                    <Badge variant="success"
+                        >Status: {getStatusLabel(selectedStatusRange)}</Badge
                     >
-                        Status: {selectedStatusRange === "2xx"
-                            ? "2xx - Success"
-                            : selectedStatusRange === "3xx"
-                              ? "3xx - Redirect"
-                              : selectedStatusRange === "4xx"
-                                ? "4xx - Client Error"
-                                : selectedStatusRange === "5xx"
-                                  ? "5xx - Server Error"
-                                  : "No Response"}
-                    </span>
                 {/if}
             </div>
+
             {#if hasActiveFilters && !isPending}
                 <div class="text-sm text-gray-600">
                     Showing {filteredSessions.length} of {sessions.length} sessions
                 </div>
             {/if}
-        </div>
+        </Card>
 
         {#if isPending}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
-            >
-                <div class="text-center">
-                    <div
-                        class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4"
-                    >
-                        <svg
-                            class="w-8 h-8 text-purple-600 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                        Loading Sessions
-                    </h3>
-                    <p class="text-gray-600">
-                        Fetching captured HTTP traffic sessions...
-                    </p>
-                </div>
-            </div>
+            <LoadingState
+                title="Loading Sessions"
+                description="Fetching captured HTTP traffic sessions..."
+            />
         {:else if isError}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-red-200 p-6"
-            >
-                <div class="flex items-start gap-4">
-                    <div class="flex-shrink-0">
-                        <div class="p-2 bg-red-100 rounded-lg">
-                            <svg
-                                class="w-6 h-6 text-red-600"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <h3 class="text-lg font-semibold text-gray-900 mb-2">
-                            Error Loading Sessions
-                        </h3>
-                        <p class="text-gray-600 mb-4">
-                            {error?.message || "Failed to load sessions"}
-                        </p>
-                        <button
-                            onclick={() => query.refetch()}
-                            class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all font-semibold shadow-md flex items-center gap-2"
-                        >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                viewBox="0 0 24 24"
-                                stroke="currentColor"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                />
-                            </svg>
-                            Retry
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <ErrorState
+                title="Error Loading Sessions"
+                message={error?.message || "Failed to load sessions"}
+                onRetry={() => query.refetch()}
+            />
         {:else if filteredSessions.length === 0}
-            <div
-                class="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg p-12 border border-gray-100"
-            >
-                <div class="text-center">
-                    <div
-                        class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4"
-                    >
-                        <svg
-                            class="w-8 h-8 text-purple-600"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
+            {#if hasActiveFilters}
+                <EmptyState
+                    icon={Search}
+                    title="No Matching Sessions"
+                    description="No sessions match your current filters. Try adjusting your search criteria."
+                    actionLabel="Clear All Filters"
+                    onAction={clearFilters}
+                />
+            {:else}
+                <Card class="p-12">
+                    <div class="text-center">
+                        <div
+                            class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                        </svg>
-                    </div>
-                    {#if hasActiveFilters}
-                        <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                            No Matching Sessions
-                        </h3>
-                        <p class="text-gray-600 mb-6">
-                            No sessions match your current filters. Try
-                            adjusting your search criteria.
-                        </p>
-                        <button
-                            onclick={clearFilters}
-                            class="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all font-semibold shadow-md"
-                        >
-                            Clear All Filters
-                        </button>
-                    {:else}
+                            <FileText class="w-8 h-8 text-purple-600" />
+                        </div>
                         <h3 class="text-xl font-semibold text-gray-900 mb-2">
                             No Sessions Found
                         </h3>
@@ -745,9 +511,7 @@
                             Start the capture agent to begin capturing HTTP
                             traffic.
                         </p>
-                        <div
-                            class="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-700"
-                        >
+                        <Badge variant="info">
                             <svg
                                 class="w-4 h-4"
                                 fill="none"
@@ -762,10 +526,10 @@
                                 />
                             </svg>
                             Use the controls above to start capturing
-                        </div>
-                    {/if}
-                </div>
-            </div>
+                        </Badge>
+                    </div>
+                </Card>
+            {/if}
         {:else}
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 {#each filteredSessions as session}
@@ -777,28 +541,22 @@
                             <div class="flex items-start justify-between">
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center gap-2 mb-2">
-                                        <span
-                                            class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-sm"
+                                        <Badge variant="method" size="sm"
+                                            >{session.method}</Badge
                                         >
-                                            {session.method}
-                                        </span>
                                         {#if session.statusCode}
-                                            <span
-                                                class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold {session.statusCode <
-                                                300
-                                                    ? 'bg-gradient-to-r from-green-500 to-green-600 text-white'
-                                                    : session.statusCode < 400
-                                                      ? 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white'
-                                                      : 'bg-gradient-to-r from-red-500 to-red-600 text-white'} shadow-sm"
+                                            <Badge
+                                                variant={getStatusVariant(
+                                                    session.statusCode,
+                                                )}
+                                                size="sm"
                                             >
                                                 {session.statusCode}
-                                            </span>
+                                            </Badge>
                                         {:else}
-                                            <span
-                                                class="inline-flex items-center px-3 py-1 rounded-lg text-sm font-semibold bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-sm"
+                                            <Badge variant="default" size="sm"
+                                                >No Response</Badge
                                             >
-                                                No Response
-                                            </span>
                                         {/if}
                                     </div>
                                     <p
@@ -807,19 +565,9 @@
                                         {session.uri}
                                     </p>
                                 </div>
-                                <svg
+                                <ChevronRight
                                     class="w-5 h-5 text-gray-400 group-hover:text-purple-500 transition-colors flex-shrink-0 ml-2"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M9 5l7 7-7 7"
-                                    />
-                                </svg>
+                                />
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -829,19 +577,7 @@
                                     <p
                                         class="text-xs text-blue-600 font-medium mb-1 flex items-center gap-1"
                                     >
-                                        <svg
-                                            class="w-3 h-3"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M7 16l-4-4m0 0l4-4m-4 4h18"
-                                            />
-                                        </svg>
+                                        <ArrowLeft class="w-3 h-3" />
                                         Source
                                     </p>
                                     <p
@@ -856,19 +592,7 @@
                                     <p
                                         class="text-xs text-purple-600 font-medium mb-1 flex items-center gap-1"
                                     >
-                                        <svg
-                                            class="w-3 h-3"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M17 8l4 4m0 0l-4 4m4-4H3"
-                                            />
-                                        </svg>
+                                        <ArrowRight class="w-3 h-3" />
                                         Destination
                                     </p>
                                     <p
@@ -882,19 +606,7 @@
                             <div
                                 class="flex items-center gap-2 pt-3 border-t border-gray-200"
                             >
-                                <svg
-                                    class="w-4 h-4 text-gray-400"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
+                                <Clock class="w-4 h-4 text-gray-400" />
                                 <p class="text-xs text-gray-600">
                                     {new Date(
                                         session.timestamp,
@@ -908,60 +620,48 @@
         {/if}
     </div>
 
-    <!-- Export Progress Modal -->
-    {#if isExporting}
-        <div
-            class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50"
-        >
+    <Modal open={isExporting} onClose={() => {}} showCloseButton={false}>
+        <div class="text-center">
             <div
-                class="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4"
+                class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4"
             >
-                <div class="text-center">
-                    <div
-                        class="mx-auto w-16 h-16 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4"
-                    >
-                        <svg
-                            class="w-8 h-8 text-purple-600 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                    </div>
-                    <h3 class="text-xl font-semibold text-gray-900 mb-2">
-                        Preparing Export
-                    </h3>
-                    <p class="text-gray-600 mb-4">
-                        Fetching complete session data with headers and
-                        bodies...
-                    </p>
-                    <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                        <div
-                            class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300"
-                            style="width: {exportProgress.total > 0
-                                ? (exportProgress.current /
-                                      exportProgress.total) *
-                                  100
-                                : 0}%"
-                        ></div>
-                    </div>
-                    <p class="text-sm text-gray-500">
-                        {exportProgress.current} of {exportProgress.total} sessions
-                    </p>
-                </div>
+                <svg
+                    class="w-8 h-8 text-purple-600 animate-spin"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                    ></circle>
+                    <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                </svg>
             </div>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">
+                Preparing Export
+            </h3>
+            <p class="text-gray-600 mb-4">
+                Fetching complete session data with headers and bodies...
+            </p>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mb-2">
+                <div
+                    class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-300"
+                    style="width: {exportProgress.total > 0
+                        ? (exportProgress.current / exportProgress.total) * 100
+                        : 0}%"
+                ></div>
+            </div>
+            <p class="text-sm text-gray-500">
+                {exportProgress.current} of {exportProgress.total} sessions
+            </p>
         </div>
-    {/if}
+    </Modal>
 </div>

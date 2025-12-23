@@ -1,9 +1,9 @@
 <script lang="ts">
     import { onMount, onDestroy } from "svelte";
-    import { page } from "$app/stores";
+    import { page } from "$app/state";
     import NotificationBell from "$lib/components/NotificationBell.svelte";
 
-    $: currentPath = $page.url.pathname;
+    $: currentPath = page.url.pathname;
 
     let apiConnected = false;
     let checkInterval: ReturnType<typeof setInterval> | null = null;
